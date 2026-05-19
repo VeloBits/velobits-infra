@@ -27,7 +27,7 @@
       "enabled": true,
       "publicClient": true,
       "standardFlowEnabled": true,
-      "directAccessGrantsEnabled": false,
+      "directAccessGrantsEnabled": true,
       "serviceAccountsEnabled": false,
       "redirectUris": [
         "http://localhost:3000/auth/callback",
@@ -55,5 +55,7 @@
       }
     }
   ],
-  "smtpServer": {}
+  "smtpServer": {},
+  "loginTheme": "fixmytext",
+  "emailTheme": "fixmytext"
 }

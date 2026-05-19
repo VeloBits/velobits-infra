@@ -109,4 +109,62 @@ if [ -n "${SMTP_HOST:-}" ] && [ -n "${SMTP_USERNAME:-}" ]; then
   echo "[bootstrap] SMTP configured"
 fi
 
+# ── Configure Google identity provider ─────────────────────────────────────
+if [ -n "${GOOGLE_OAUTH_CLIENT_ID:-}" ] && [ -n "${GOOGLE_OAUTH_CLIENT_SECRET:-}" ]; then
+  echo "[bootstrap] configuring Google identity provider..."
+  # Check if already exists
+  GOOGLE_STATUS=$(curl -fsS -o /dev/null -w "%{http_code}" \
+    -H "Authorization: Bearer $ADMIN_TOKEN" \
+    "$KEYCLOAK_URL/admin/realms/$KEYCLOAK_REALM/identity-provider/instances/google" || true)
+  if [ "$GOOGLE_STATUS" != "200" ]; then
+    curl -fsS -X POST \
+      -H "Authorization: Bearer $ADMIN_TOKEN" \
+      -H "Content-Type: application/json" \
+      -d "{
+        \"alias\": \"google\",
+        \"providerId\": \"google\",
+        \"enabled\": true,
+        \"trustEmail\": true,
+        \"config\": {
+          \"clientId\": \"${GOOGLE_OAUTH_CLIENT_ID}\",
+          \"clientSecret\": \"${GOOGLE_OAUTH_CLIENT_SECRET}\",
+          \"defaultScope\": \"openid email profile\"
+        }
+      }" \
+      "$KEYCLOAK_URL/admin/realms/$KEYCLOAK_REALM/identity-provider/instances" \
+      || echo "[bootstrap] Google IdP creation failed (non-fatal)"
+    echo "[bootstrap] Google IdP configured"
+  else
+    echo "[bootstrap] Google IdP already exists"
+  fi
+fi
+
+# ── Configure GitHub identity provider ─────────────────────────────────────
+if [ -n "${GH_OAUTH_CLIENT_ID:-}" ] && [ -n "${GH_OAUTH_CLIENT_SECRET:-}" ]; then
+  echo "[bootstrap] configuring GitHub identity provider..."
+  GH_STATUS=$(curl -fsS -o /dev/null -w "%{http_code}" \
+    -H "Authorization: Bearer $ADMIN_TOKEN" \
+    "$KEYCLOAK_URL/admin/realms/$KEYCLOAK_REALM/identity-provider/instances/github" || true)
+  if [ "$GH_STATUS" != "200" ]; then
+    curl -fsS -X POST \
+      -H "Authorization: Bearer $ADMIN_TOKEN" \
+      -H "Content-Type: application/json" \
+      -d "{
+        \"alias\": \"github\",
+        \"providerId\": \"github\",
+        \"enabled\": true,
+        \"trustEmail\": true,
+        \"config\": {
+          \"clientId\": \"${GH_OAUTH_CLIENT_ID}\",
+          \"clientSecret\": \"${GH_OAUTH_CLIENT_SECRET}\"
+        }
+      }" \
+      "$KEYCLOAK_URL/admin/realms/$KEYCLOAK_REALM/identity-provider/instances" \
+      || echo "[bootstrap] GitHub IdP creation failed (non-fatal)"
+    echo "[bootstrap] GitHub IdP configured"
+  else
+    echo "[bootstrap] GitHub IdP already exists"
+  fi
+fi
+
 echo "[bootstrap] done"

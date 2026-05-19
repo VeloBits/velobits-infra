@@ -1,0 +1,61 @@
+/* FixMyText branded Keycloak theme — login.css */
+:root {
+  --pf-global--BackgroundColor--dark-100: #0f1117;
+  --pf-global--BackgroundColor--dark-200: #1a1d27;
+  --pf-global--primary-color--100: #6366f1;
+  --pf-global--primary-color--200: #4f46e5;
+}
+
+body {
+  background: #0f1117;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+}
+
+#kc-header {
+  background: transparent;
+}
+
+.login-pf-page .card-pf {
+  background: #1a1d27;
+  border: 1px solid #2d3048;
+  border-radius: 12px;
+  box-shadow: 0 8px 32px rgba(0,0,0,0.4);
+  max-width: 420px;
+}
+
+#kc-page-title {
+  color: #f0f2ff;
+  font-size: 1.5rem;
+  font-weight: 600;
+}
+
+.pf-c-form__label, label {
+  color: #a0a4c0;
+}
+
+.pf-c-form-control, input[type="text"], input[type="password"], input[type="email"] {
+  background: #0f1117;
+  border-color: #2d3048;
+  color: #f0f2ff;
+  border-radius: 8px;
+}
+
+.pf-c-button.pf-m-primary, #kc-login {
+  background: #6366f1;
+  border-color: #6366f1;
+  border-radius: 8px;
+  font-weight: 600;
+}
+
+.pf-c-button.pf-m-primary:hover {
+  background: #4f46e5;
+  border-color: #4f46e5;
+}
+
+a, .pf-c-button.pf-m-link {
+  color: #6366f1;
+}
+
+.kc-social-provider-logo img {
+  filter: brightness(1.2);
+}
