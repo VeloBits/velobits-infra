@@ -87,4 +87,26 @@ if [[ "${1:-}" != "--skip-realm-import" ]]; then
   echo "[bootstrap] realm imported"
 fi
 
+# ── Configure SMTP via Admin API (env vars not interpolated in realm JSON) ─────
+if [ -n "${SMTP_HOST:-}" ] && [ -n "${SMTP_USERNAME:-}" ]; then
+  echo "[bootstrap] configuring realm SMTP..."
+  curl -fsS -X PUT \
+    -H "Authorization: Bearer $ADMIN_TOKEN" \
+    -H "Content-Type: application/json" \
+    -d "{
+      \"smtpServer\": {
+        \"host\": \"${SMTP_HOST}\",
+        \"port\": \"${SMTP_PORT:-587}\",
+        \"from\": \"${EMAIL_FROM:-noreply@fixmytext.local}\",
+        \"auth\": true,
+        \"user\": \"${SMTP_USERNAME}\",
+        \"password\": \"${SMTP_PASSWORD}\",
+        \"ssl\": false,
+        \"starttls\": true
+      }
+    }" \
+    "$KEYCLOAK_URL/admin/realms/$KEYCLOAK_REALM" || echo "[bootstrap] SMTP config failed (non-fatal)"
+  echo "[bootstrap] SMTP configured"
+fi
+
 echo "[bootstrap] done"
