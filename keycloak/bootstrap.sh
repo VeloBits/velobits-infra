@@ -30,8 +30,12 @@ set -euo pipefail
 
 KEYCLOAK_URL="${KEYCLOAK_URL:-http://localhost:8080}"
 KEYCLOAK_ADMIN="${KEYCLOAK_ADMIN:-admin}"
-KEYCLOAK_REALM="${KEYCLOAK_REALM:-fixmytext}"
-REALM_EXPORT_PATH="${REALM_EXPORT_PATH:-$(dirname "$0")/realm-export.json}"
+# Sprint 5b: default realm is now Velobits-Dev. The legacy 'fixmytext' realm
+# name is no longer the default. Production uses Velobits-Prod (override via env).
+KEYCLOAK_REALM="${KEYCLOAK_REALM:-Velobits-Dev}"
+# Sprint 5b: dual realm exports. Dev imports realm-export-dev.json by default;
+# prod imports realm-export-prod.json via REALM_EXPORT_PATH override.
+REALM_EXPORT_PATH="${REALM_EXPORT_PATH:-$(dirname "$0")/realm-export-dev.json}"
 
 if [[ -z "${KEYCLOAK_ADMIN_PASSWORD:-}" ]]; then
   echo "[bootstrap] FATAL: KEYCLOAK_ADMIN_PASSWORD not set" >&2

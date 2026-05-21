@@ -1,0 +1,28 @@
+# Traefik v3 static configuration — VeloBits platform edge proxy.
+#
+# Responsibilities:
+#   1. Accept all *.velobits.dev traffic on :80 (TLS termination is Sprint 9).
+#   2. Route by Host header to the right service container.
+#
+# Service routes are defined via Docker labels in docker-compose.yml
+# (provider = docker). This file only configures the entry points and
+# the docker provider.
+
+api:
+  dashboard: true
+  insecure: true   # dev only: dashboard bound to 127.0.0.1:8090
+
+entryPoints:
+  web:
+    address: ":80"
+
+providers:
+  docker:
+    exposedByDefault: false
+    network: fixmytext-net
+    watch: true
+
+log:
+  level: INFO
+
+accessLog: {}
