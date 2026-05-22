@@ -1,0 +1,21 @@
+# Sprint 5e will add path-prefix routing rules here.
+# Example (two apps under one hostname):
+#
+# http:
+#   routers:
+#     content-app:
+#       rule: "Host(`develop-fixmytext.velobits.dev`) && PathPrefix(`/about`, `/pricing`, `/share`)"
+#       service: content-app-svc
+#     web-app:
+#       rule: "Host(`develop-fixmytext.velobits.dev`)"
+#       priority: 1
+#       service: web-app-svc
+#   services:
+#     content-app-svc:
+#       loadBalancer:
+#         servers:
+#           - url: "http://content-app:3001"
+#     web-app-svc:
+#       loadBalancer:
+#         servers:
+#           - url: "http://web-app:3000"
