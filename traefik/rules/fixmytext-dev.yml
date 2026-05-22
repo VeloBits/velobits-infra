@@ -1,0 +1,37 @@
+# Path-prefix routing rules for develop-fixmytext.velobits.dev.
+#
+# Two apps share one hostname, split by path:
+#   content-app (Next.js)  — /, /tools/*, /about, /pricing, /share/*
+#   web-app     (Vite SPA) — /app/* (editor, dashboard, auth)
+#
+# Higher priority wins when both routers could match.
+# Prod equivalents (fixmytext.velobits.dev) added in Sprint 9.
+
+http:
+  routers:
+    # Content app: static pages, SEO tool pages, share pages, marketing root.
+    fixmytext-dev-content:
+      rule: "Host(`develop-fixmytext.velobits.dev`) && (Path(`/`) || PathPrefix(`/tools`, `/about`, `/pricing`, `/share`))"
+      priority: 20
+      service: fixmytext-dev-content-svc
+      entryPoints:
+        - web
+
+    # Web app: Vite SPA served under /app/*.
+    fixmytext-dev-web:
+      rule: "Host(`develop-fixmytext.velobits.dev`) && PathPrefix(`/app`)"
+      priority: 10
+      service: fixmytext-dev-web-svc
+      entryPoints:
+        - web
+
+  services:
+    fixmytext-dev-content-svc:
+      loadBalancer:
+        servers:
+          - url: "http://content-app:3001"
+
+    fixmytext-dev-web-svc:
+      loadBalancer:
+        servers:
+          - url: "http://web-app:3000"
