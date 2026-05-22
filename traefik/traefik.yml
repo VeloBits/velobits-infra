@@ -2,11 +2,14 @@
 #
 # Responsibilities:
 #   1. Accept all *.velobits.dev traffic on :80 (TLS termination is Sprint 9).
-#   2. Route by Host header to the right service container.
+#   2. Route by Host header to the right service container (docker provider).
+#   3. Sprint 5e: route by Host + Path to split content-app vs web-app within
+#      a single hostname (file provider, activated once both apps are containers).
 #
-# Service routes are defined via Docker labels in docker-compose.yml
-# (provider = docker). This file only configures the entry points and
-# the docker provider.
+# Current state (Sprint 5c):
+#   - docker provider: active (Kong + Keycloak-Dev via Docker labels)
+#   - file provider: configured but pointing at an empty directory;
+#     Sprint 5e activates it with path-prefix rules.
 
 api:
   dashboard: true
@@ -20,6 +23,12 @@ providers:
   docker:
     exposedByDefault: false
     network: fixmytext-net
+    watch: true
+  # File provider pre-wired for Sprint 5e path-prefix routing.
+  # Rules live in gateway/traefik/rules/ — empty directory in Sprint 5c,
+  # populated in Sprint 5e when both apps are containerised.
+  file:
+    directory: /etc/traefik/rules
     watch: true
 
 log:
