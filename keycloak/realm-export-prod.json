@@ -1,5 +1,5 @@
 {
-  "_comment": "Production realm export — placeholder for Sprint 9 production deploy. Not imported by docker compose --profile dev. Sprint 9 will (a) provision a separate Keycloak-Prod instance, (b) import this realm, (c) rotate every secret, (d) wire real SMTP, (e) configure social IdPs (Google, GitHub) per Sprint 4c follow-up.",
+  "_comment": "Production realm export — placeholder for production deploy. Not imported by docker compose --profile dev. Production deploy will (a) provision a separate Keycloak-Prod instance, (b) import this realm, (c) rotate every secret, (d) wire real SMTP, (e) configure social IdPs (Google, GitHub).",
   "realm": "Velobits-Prod",
   "enabled": true,
   "sslRequired": "all",
@@ -50,7 +50,7 @@
       "serviceAccountsEnabled": true,
       "standardFlowEnabled": false,
       "directAccessGrantsEnabled": false,
-      "secret": "PLACEHOLDER_ROTATED_ON_SPRINT_9_PROVISION",
+      "secret": "PLACEHOLDER_ROTATED_ON_PRODUCTION_PROVISION",
       "attributes": {
         "access.token.lifespan": "300"
       }

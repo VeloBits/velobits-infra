@@ -5,7 +5,7 @@
 #   web-app     (Vite SPA) — /app/* (editor, dashboard, auth)
 #
 # Higher priority wins when both routers could match.
-# Prod equivalents (fixmytext.velobits.dev) added in Sprint 9.
+# Prod equivalents (fixmytext.velobits.dev) are added at production deploy.
 
 http:
   routers:

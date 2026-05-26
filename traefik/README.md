@@ -1,6 +1,6 @@
 # Traefik — VeloBits Edge Reverse Proxy
 
-Sprint 5b introduces Traefik as the **edge layer** of the VeloBits platform.
+Traefik is the **edge layer** of the VeloBits platform.
 
 ## Responsibility
 
@@ -10,15 +10,15 @@ INTERNET → Traefik (subdomain → container) → Kong (path → microservice) 
 
 Traefik routes by **Host header**:
 
-| Host | Container | Sprint |
+| Host | Container | Environment |
 |---|---|---|
-| `auth-dev.velobits.dev` | `keycloak-dev` | 5b (this sprint) |
-| `api-dev.velobits.dev` | `kong` | 5b |
-| `develop-fixmytext.velobits.dev` | frontend dev container | 5b–5e |
-| `auth.velobits.dev` | `keycloak-prod` | Sprint 9 |
-| `api.velobits.dev` | `kong-prod` | Sprint 9 |
-| `fixmytext.velobits.dev` | `frontend-prod` | Sprint 9 |
-| `chat.velobits.dev`, `notes.velobits.dev` | future products | Sprint 6+ |
+| `auth-dev.velobits.dev` | `keycloak-dev` | dev |
+| `api-dev.velobits.dev` | `kong` | dev |
+| `develop-fixmytext.velobits.dev` | frontend dev container | dev |
+| `auth.velobits.dev` | `keycloak-prod` | prod |
+| `api.velobits.dev` | `kong-prod` | prod |
+| `fixmytext.velobits.dev` | `frontend-prod` | prod |
+| `chat.velobits.dev`, `notes.velobits.dev` | future products | prod |
 
 ## Local development
 
@@ -57,10 +57,10 @@ my-service:
 
 That's it. Traefik picks up the labels automatically (`watch: true`).
 
-## Production deployment (Sprint 9)
+## Production deployment
 
-Sprint 9 will:
-1. Add TLS entry point on `:443`
-2. Wire Let's Encrypt for cert provisioning
-3. Add a `prod` profile to docker-compose with `auth.velobits.dev`, `api.velobits.dev`, `fixmytext.velobits.dev` services
-4. Provision real DNS records pointing at the production server
+Production adds:
+1. TLS entry point on `:443`
+2. Let's Encrypt for cert provisioning
+3. A `prod` profile in docker-compose with `auth.velobits.dev`, `api.velobits.dev`, `fixmytext.velobits.dev` services
+4. Real DNS records pointing at the production server
