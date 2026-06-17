@@ -19,7 +19,9 @@
       }
     ]
   },
-  "defaultRoles": ["user"],
+  "defaultRoles": [
+    "user"
+  ],
   "clients": [
     {
       "clientId": "develop-fixmytext",
@@ -42,7 +44,20 @@
       "attributes": {
         "pkce.code.challenge.method": "S256",
         "access.token.lifespan": "300"
-      }
+      },
+      "protocolMappers": [
+        {
+          "name": "fixmytext-backend-audience",
+          "protocol": "openid-connect",
+          "protocolMapper": "oidc-audience-mapper",
+          "consentRequired": false,
+          "config": {
+            "included.client.audience": "fixmytext-backend",
+            "id.token.claim": "false",
+            "access.token.claim": "true"
+          }
+        }
+      ]
     },
     {
       "clientId": "fixmytext-backend",
@@ -63,8 +78,12 @@
       "enabled": false,
       "publicClient": true,
       "standardFlowEnabled": true,
-      "redirectUris": ["http://develop-chat.velobits.dev/*"],
-      "webOrigins": ["http://develop-chat.velobits.dev"],
+      "redirectUris": [
+        "http://develop-chat.velobits.dev/*"
+      ],
+      "webOrigins": [
+        "http://develop-chat.velobits.dev"
+      ],
       "attributes": {
         "pkce.code.challenge.method": "S256"
       }
@@ -75,8 +94,12 @@
       "enabled": false,
       "publicClient": true,
       "standardFlowEnabled": true,
-      "redirectUris": ["http://develop-notes.velobits.dev/*"],
-      "webOrigins": ["http://develop-notes.velobits.dev"],
+      "redirectUris": [
+        "http://develop-notes.velobits.dev/*"
+      ],
+      "webOrigins": [
+        "http://develop-notes.velobits.dev"
+      ],
       "attributes": {
         "pkce.code.challenge.method": "S256"
       }

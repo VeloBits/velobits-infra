@@ -1,61 +1,581 @@
-/* FixMyText branded Keycloak theme — login.css */
+/* ──────────────────────────────────────────────────────────────────────────
+   FixMyText Keycloak login theme
+   Target DOM: Keycloak 26.0 base theme `keycloak` → PatternFly v3/v4 markup
+   (NOT v5 / .pf-c-login*). Verified against the live login page.
+   Design tokens mirror frontend/apps/shell/src/assets/css/tokens.css (dark).
+   ────────────────────────────────────────────────────────────────────────── */
+
 :root {
-  --pf-global--BackgroundColor--dark-100: #0f1117;
-  --pf-global--BackgroundColor--dark-200: #1a1d27;
-  --pf-global--primary-color--100: #6366f1;
-  --pf-global--primary-color--200: #4f46e5;
+  --bg:           #1e1e1e;
+  --surface:      #252526;
+  --border:       rgba(255, 255, 255, 0.08);
+  --border-hover: rgba(255, 255, 255, 0.20);
+  --accent:       #007acc;
+  --accent-hover: #1c8cd9;
+  --text:         #d4d4d4;
+  --text-2:       #a0a0a0;
+  --text-3:       rgba(255, 255, 255, 0.50);
+  --input-bg:     #3c3c3c;
+  --input-border: rgba(255, 255, 255, 0.12);
+  --r-sm: 4px;
+  --r-md: 6px;
+  --r-lg: 8px;
+  --t: 0.12s ease;
 }
 
-body {
-  background: #0f1117;
-  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+/* ── Reset / base ─────────────────────────────────────────────────────────── */
+
+*, *::before, *::after { box-sizing: border-box; }
+
+html, body {
+  margin: 0;
+  padding: 0;
+  background: var(--bg);
+  color: var(--text);
+  font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+  font-size: 15px;
+  line-height: 1.5;
+  min-height: 100vh;
 }
+
+/* ── Page layout — full-height dark backdrop + centered card ──────────────────
+   The base theme renders: .login-pf-page > (#kc-header) + .card-pf.
+   .login-pf-page is the only reliable flex container in PF v3/v4, so we center
+   directly on it. No .pf-c-login__container / .container-fluid / .row exist. */
+
+.login-pf-page {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+  background: var(--bg) !important;
+}
+
+/* Kill the realm background image so it can't bleed below a short page. */
+html,
+body.login-pf,
+body.login-pf-page,
+.login-pf-page {
+  background-image: none !important;
+}
+
+body.login-pf {
+  background: var(--bg) !important;
+}
+
+#kc-content,
+#kc-content-wrapper {
+  background: transparent !important;
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+/* ── Auth card ────────────────────────────────────────────────────────────── */
+
+.card-pf {
+  background: var(--surface) !important;
+  border: 1px solid var(--border) !important;
+  border-radius: var(--r-md) !important;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.40) !important;
+  padding: 2rem 1.5rem !important;
+  width: 100% !important;
+  max-width: 420px !important;
+  margin: 0 auto !important;
+}
+
+/* #kc-form-wrapper is nested inside .card-pf — keep it flat so there's no
+   inner border box (the card border is sufficient). */
+#kc-form-wrapper {
+  background: transparent !important;
+  border: none !important;
+  box-shadow: none !important;
+  padding: 0 !important;
+  width: 100% !important;
+}
+
+/* ── FixMyText wordmark — injected above the card ─────────────────────────────
+   Structure: #kc-header.login-pf-page-header > #kc-header-wrapper (text node).
+   We keep #kc-header visible (its child renders the wordmark) and zero out the
+   realm display-name text node by setting font-size:0 on the wrapper, then
+   restore size on the ::before pseudo so only "FixMyText" shows. */
 
 #kc-header {
-  background: transparent;
+  display: block !important;
+  width: 100%;
+  text-align: center;
+  margin: 0 0 16px;
 }
 
-.login-pf-page .card-pf {
-  background: #1a1d27;
-  border: 1px solid #2d3048;
-  border-radius: 12px;
-  box-shadow: 0 8px 32px rgba(0,0,0,0.4);
-  max-width: 420px;
+#kc-header-wrapper {
+  display: block;
+  text-align: center;
+  margin: 0 auto 8px;
+  /* hide any realm display-name text node rendered directly in the wrapper */
+  font-size: 0;
+  color: transparent;
 }
 
-#kc-page-title {
-  color: #f0f2ff;
+#kc-header-wrapper::before {
+  content: 'FixMyText';
+  display: block;
+  text-align: center;
   font-size: 1.5rem;
-  font-weight: 600;
+  font-weight: 700;
+  color: var(--accent);
+  letter-spacing: -0.5px;
+  line-height: 1;
+  margin-bottom: 8px;
 }
 
-.pf-c-form__label, label {
-  color: #a0a4c0;
+/* ── Page title / heading ─────────────────────────────────────────────────────
+   #kc-page-title lives inside .login-pf-header at the top of the card. */
+
+#kc-page-title,
+.login-pf-header h1 {
+  color: var(--text) !important;
+  font-size: 1.4rem !important;
+  font-weight: 600 !important;
+  letter-spacing: -0.01em !important;
+  margin: 0 0 22px !important;
+  padding-bottom: 14px !important;
+  border-bottom: 1px solid var(--border) !important;
+  text-align: left !important;
 }
 
-.pf-c-form-control, input[type="text"], input[type="password"], input[type="email"] {
-  background: #0f1117;
-  border-color: #2d3048;
-  color: #f0f2ff;
-  border-radius: 8px;
+/* ── Labels ───────────────────────────────────────────────────────────────── */
+
+label,
+.pf-c-form__label,
+.pf-c-form__label-text,
+.control-label {
+  color: var(--text-2) !important;
+  font-size: 0.7rem !important;
+  font-weight: 600 !important;
+  text-transform: uppercase !important;
+  letter-spacing: 0.06em !important;
+  margin-bottom: 6px !important;
+  /* inline-block (not block) so the bare "*" required-marker text node stays on
+     the same line as the label instead of wrapping beneath it. */
+  display: inline-block !important;
 }
 
-.pf-c-button.pf-m-primary, #kc-login {
-  background: #6366f1;
-  border-color: #6366f1;
-  border-radius: 8px;
-  font-weight: 600;
+/* ── Inputs ───────────────────────────────────────────────────────────────── */
+
+input[type="text"],
+input[type="email"],
+input[type="password"],
+.pf-c-form-control,
+.form-control {
+  background-color: var(--input-bg) !important;
+  background-repeat: no-repeat !important;
+  background-position: 12px center !important;
+  background-size: 16px 16px !important;
+  border: 1px solid var(--input-border) !important;
+  border-radius: var(--r-sm) !important;
+  color: var(--text) !important;
+  font-size: 0.88rem !important;
+  padding: 10px 12px 10px 38px !important;
+  width: 100% !important;
+  outline: none !important;
+  transition: border-color var(--t), box-shadow var(--t) !important;
+  box-shadow: none !important;
 }
 
-.pf-c-button.pf-m-primary:hover {
-  background: #4f46e5;
-  border-color: #4f46e5;
+input[type="text"]:focus,
+input[type="email"]:focus,
+input[type="password"]:focus,
+.pf-c-form-control:focus,
+.form-control:focus {
+  border-color: var(--accent) !important;
+  box-shadow: 0 0 0 3px rgba(0, 122, 204, 0.15) !important;
 }
 
-a, .pf-c-button.pf-m-link {
-  color: #6366f1;
+input::placeholder {
+  color: var(--text-3) !important;
 }
 
-.kc-social-provider-logo img {
-  filter: brightness(1.2);
+/* ── Leading field icons (NEXUS-style) — muted inline-SVG feather glyphs ─────── */
+
+#username,
+#firstName,
+#lastName {
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%23888888' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2'/%3E%3Ccircle cx='12' cy='7' r='4'/%3E%3C/svg%3E") !important;
+}
+
+#email,
+input[type="email"] {
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%23888888' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Crect x='2' y='4' width='20' height='16' rx='2'/%3E%3Cpath d='m22 7-10 5L2 7'/%3E%3C/svg%3E") !important;
+}
+
+#password,
+#password-new,
+#password-confirm {
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%23888888' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Crect x='3' y='11' width='18' height='11' rx='2'/%3E%3Cpath d='M7 11V7a5 5 0 0 1 10 0v4'/%3E%3C/svg%3E") !important;
+}
+
+/* ── Password field + reveal toggle (unified, borderless eye) ─────────────────
+   The base theme wraps the password input in a .pf-c-input-group alongside a
+   .pf-c-button (the show/hide eye). We promote the GROUP to be the bordered
+   field and make the inner input AND the toggle transparent — so the eye is a
+   borderless icon floating inside the field (NEXUS-style), not a boxed button. */
+
+.pf-c-input-group {
+  display: flex !important;
+  align-items: center !important;
+  background-color: var(--input-bg) !important;
+  border: 1px solid var(--input-border) !important;
+  border-radius: var(--r-sm) !important;
+  box-shadow: none !important;
+  transition: border-color var(--t), box-shadow var(--t) !important;
+}
+
+.pf-c-input-group:focus-within {
+  border-color: var(--accent) !important;
+  box-shadow: 0 0 0 3px rgba(0, 122, 204, 0.15) !important;
+}
+
+.pf-c-input-group input,
+.pf-c-input-group .pf-c-form-control {
+  flex: 1 1 auto !important;
+  min-width: 0 !important;
+  background-color: transparent !important;
+  border: none !important;
+  border-radius: 0 !important;
+  box-shadow: none !important;
+}
+
+.pf-c-input-group input:focus,
+.pf-c-input-group .pf-c-form-control:focus {
+  border: none !important;
+  box-shadow: none !important;
+}
+
+.pf-c-input-group > .pf-c-button,
+.pf-c-input-group button[aria-label],
+.pf-c-input-group button.pf-m-control,
+#kc-form .pf-c-input-group .pf-c-button {
+  background: transparent !important;
+  border: none !important;
+  border-radius: 0 !important;
+  box-shadow: none !important;
+  color: var(--text-3) !important;
+  cursor: pointer !important;
+  padding: 0 12px !important;
+  display: flex !important;
+  align-items: center !important;
+  transition: color var(--t) !important;
+}
+
+.pf-c-input-group > .pf-c-button:hover,
+#kc-form .pf-c-input-group .pf-c-button:hover {
+  background: transparent !important;
+  color: var(--text) !important;
+}
+
+.pf-c-input-group .pf-c-button svg,
+.pf-c-input-group .pf-c-button i {
+  fill: currentColor !important;
+  color: inherit !important;
+}
+
+/* PatternFly v4 draws the .pf-m-control button border via an ::after pseudo
+   (light-gray box). Kill it so the eye toggle is a bare icon inside the field. */
+.pf-c-input-group .pf-c-button::after,
+.pf-c-input-group .pf-c-button.pf-m-control::after {
+  display: none !important;
+  border: 0 !important;
+  box-shadow: none !important;
+}
+
+/* ── Primary button ───────────────────────────────────────────────────────── */
+
+#kc-login,
+.pf-c-button.pf-m-primary,
+input[type="submit"],
+button[type="submit"] {
+  background: var(--accent) !important;
+  border: none !important;
+  border-radius: var(--r-md) !important;
+  color: #ffffff !important;
+  font-size: 0.9rem !important;
+  font-weight: 600 !important;
+  letter-spacing: 0.02em !important;
+  padding: 11px 14px !important;
+  width: 100% !important;
+  cursor: pointer !important;
+  transition: background var(--t), box-shadow var(--t) !important;
+  margin-top: 6px !important;
+}
+
+#kc-login:hover,
+.pf-c-button.pf-m-primary:hover,
+button[type="submit"]:hover {
+  background: var(--accent-hover) !important;
+}
+
+#kc-login:disabled,
+.pf-c-button.pf-m-primary:disabled {
+  opacity: 0.5 !important;
+  cursor: not-allowed !important;
+}
+
+/* ── Links ────────────────────────────────────────────────────────────────── */
+
+a,
+.pf-c-button.pf-m-link {
+  color: var(--accent) !important;
+  text-decoration: none !important;
+  font-weight: 500 !important;
+  transition: color var(--t) !important;
+}
+
+a:hover,
+.pf-c-button.pf-m-link:hover {
+  color: var(--accent-hover) !important;
+  text-decoration: underline !important;
+}
+
+/* ── Forgot password / form options row ──────────────────────────────────── */
+
+#kc-form-options,
+.kc-form-options {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin: 6px 0;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+/* ── Register form: move "Back to sign in" below the submit button ────────────
+   Keycloak renders #kc-form-options (back link) BEFORE #kc-form-buttons
+   (submit) inside a shared .form-group wrapper (no ID). Use :has() to flex
+   that specific container so the primary action always appears first. */
+
+.form-group:has(#kc-form-options) {
+  display: flex !important;
+  flex-direction: column !important;
+}
+
+#kc-form-buttons {
+  order: 1 !important;
+}
+
+/* "Back to sign in" link row — centered, below the button, with a ← prefix */
+#kc-form-options {
+  order: 2 !important;
+  justify-content: center !important;
+  margin: 14px 0 2px !important;
+}
+
+#kc-form-options a {
+  font-size: 0.82rem !important;
+  font-weight: 400 !important;
+  color: var(--text-3) !important;
+  text-decoration: none !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  gap: 5px !important;
+  transition: color var(--t) !important;
+}
+
+#kc-form-options a::before {
+  content: '←' !important;
+  font-size: 0.85rem !important;
+  line-height: 1 !important;
+}
+
+#kc-form-options a:hover {
+  color: var(--accent) !important;
+  text-decoration: none !important;
+}
+
+/* ── "New user? Sign up" footer (#kc-info / #kc-registration) ─────────────────
+   #kc-info has class .login-pf-signup and holds the registration link.
+   Keep it visible — only the Keycloak brand/logo image is hidden below. */
+
+#kc-info,
+.login-pf-signup {
+  display: block !important;
+  text-align: center;
+  margin-top: 18px;
+  font-size: 0.82rem;
+  color: var(--text-3);
+}
+
+#kc-info #kc-registration,
+#kc-info #kc-registration-container,
+#kc-registration,
+.kc-registration {
+  text-align: center;
+  margin: 0;
+  font-size: 0.82rem;
+  color: var(--text-3);
+}
+
+#kc-info a,
+#kc-registration a {
+  color: var(--accent) !important;
+}
+
+/* ── "or continue with" social divider ───────────────────────────────────── */
+
+#kc-social-providers {
+  margin-top: 20px;
+}
+
+#kc-social-providers h2,
+#kc-social-providers h4,
+.kc-social-section-header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin: 0 0 16px;
+  color: var(--text-3);
+  font-size: 0.8rem;
+  font-weight: 400;
+  white-space: nowrap;
+}
+
+#kc-social-providers h2::before,
+#kc-social-providers h2::after,
+#kc-social-providers h4::before,
+#kc-social-providers h4::after {
+  content: '';
+  flex: 1;
+  height: 1px;
+  background: var(--border);
+}
+
+/* Social provider button list */
+#kc-social-providers ul {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+#kc-social-providers ul li {
+  margin: 0;
+}
+
+#kc-social-providers .pf-c-button,
+.zocial,
+#kc-social-providers a {
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  gap: 10px !important;
+  width: 100% !important;
+  padding: 10px !important;
+  background: transparent !important;
+  border: 1px solid var(--input-border) !important;
+  border-radius: var(--r-lg) !important;
+  color: var(--text) !important;
+  font-size: 0.9rem !important;
+  font-weight: 500 !important;
+  cursor: pointer !important;
+  text-decoration: none !important;
+  transition: background var(--t), border-color var(--t) !important;
+}
+
+#kc-social-providers .pf-c-button:hover,
+.zocial:hover,
+#kc-social-providers a:hover {
+  background: rgba(255, 255, 255, 0.05) !important;
+  border-color: var(--border-hover) !important;
+  text-decoration: none !important;
+  color: var(--text) !important;
+}
+
+.kc-social-provider-logo img,
+#kc-social-providers .kc-social-provider-logo {
+  width: 18px;
+  height: 18px;
+  vertical-align: middle;
+}
+
+/* ── Alert / error messages ───────────────────────────────────────────────── */
+
+.pf-c-alert,
+#kc-error-message,
+.alert-error,
+.alert {
+  background: rgba(244, 71, 71, 0.10) !important;
+  border: 1px solid rgba(244, 71, 71, 0.30) !important;
+  border-left: 3px solid #f44747 !important;
+  border-radius: var(--r-sm) !important;
+  color: #f47777 !important;
+  padding: 10px 14px !important;
+  margin-bottom: 16px !important;
+  font-size: 0.85rem !important;
+}
+
+.pf-c-alert.pf-m-success,
+.alert-success {
+  background: rgba(78, 201, 176, 0.10) !important;
+  border-color: rgba(78, 201, 176, 0.30) !important;
+  border-left-color: #4ec9b0 !important;
+  color: #4ec9b0 !important;
+}
+
+.pf-c-alert.pf-m-info,
+.alert-info {
+  background: rgba(0, 122, 204, 0.10) !important;
+  border-color: rgba(0, 122, 204, 0.30) !important;
+  border-left-color: var(--accent) !important;
+  color: var(--accent) !important;
+}
+
+.pf-c-alert.pf-m-warning,
+.alert-warning {
+  background: rgba(255, 196, 0, 0.10) !important;
+  border-color: rgba(255, 196, 0, 0.30) !important;
+  border-left-color: #ffc400 !important;
+  color: #ffc400 !important;
+}
+
+.pf-c-alert__icon {
+  display: none;
+}
+
+/* ── Form group spacing ───────────────────────────────────────────────────── */
+
+.pf-c-form__group,
+.form-group {
+  margin-bottom: 18px;
+}
+
+/* ── Hide ONLY Keycloak logo / brand imagery (NOT #kc-info) ───────────────── */
+
+.login-pf-brand,
+.login-pf-brand img,
+#kc-info .login-pf-brand {
+  display: none !important;
+}
+
+/* ── Hide the "* Required fields" hint on the register form ───────────────────
+   Redundant clutter — every required field already shows its own "*". The hint
+   is rendered as <div class="subtitle"><span class="subtitle">…</span></div>. */
+
+.subtitle {
+  display: none !important;
+}
+
+/* ── Responsive ───────────────────────────────────────────────────────────── */
+
+@media (max-width: 480px) {
+  .login-pf-page {
+    padding: 12px;
+  }
+  .card-pf,
+  #kc-form-wrapper {
+    padding: 1.5rem 1rem !important;
+  }
 }
