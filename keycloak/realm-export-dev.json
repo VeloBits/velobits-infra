@@ -3,14 +3,25 @@
   "enabled": true,
   "sslRequired": "external",
   "accessTokenLifespan": 300,
-  "ssoSessionIdleTimeout": 1800,
+  "ssoSessionIdleTimeout": 7200,
   "ssoSessionMaxLifespan": 2592000,
+  "reuseRefreshTokens": false,
+  "refreshTokenMaxReuse": 0,
   "registrationAllowed": true,
   "loginWithEmailAllowed": true,
   "duplicateEmailsAllowed": false,
   "resetPasswordAllowed": true,
   "verifyEmail": true,
   "defaultSignatureAlgorithm": "RS256",
+  "passwordPolicy": "length(8) and notUsername and notEmail and hashAlgorithm(pbkdf2-sha256) and hashIterations(100000)",
+  "bruteForceProtected": true,
+  "permanentLockout": false,
+  "maxFailureWaitSeconds": 900,
+  "minimumQuickLoginWaitSeconds": 60,
+  "waitIncrementSeconds": 60,
+  "quickLoginCheckMilliSeconds": 1000,
+  "maxDeltaTimeSeconds": 43200,
+  "failureFactor": 5,
   "roles": {
     "realm": [
       {
@@ -29,13 +40,11 @@
       "enabled": true,
       "publicClient": true,
       "standardFlowEnabled": true,
-      "directAccessGrantsEnabled": true,
+      "directAccessGrantsEnabled": false,
       "serviceAccountsEnabled": false,
       "redirectUris": [
         "http://develop-fixmytext.velobits.dev/auth/callback",
-        "http://develop-fixmytext.velobits.dev/*",
-        "http://localhost:3000/auth/callback",
-        "http://localhost:3000/*"
+        "http://localhost:3000/auth/callback"
       ],
       "webOrigins": [
         "http://develop-fixmytext.velobits.dev",

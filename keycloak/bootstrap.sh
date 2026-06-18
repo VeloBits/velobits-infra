@@ -43,9 +43,12 @@ if [[ -z "${KEYCLOAK_ADMIN_PASSWORD:-}" ]]; then
 fi
 
 # ── 1. Wait for Keycloak to be reachable ─────────────────────────────────────
+# KC 26 with start-dev does not expose /health/ready at port 8080 unless
+# --health-enabled=true is set. Use the OIDC discovery endpoint instead —
+# it returns 200 only once the realm is fully imported and ready.
 echo "[bootstrap] waiting for Keycloak at $KEYCLOAK_URL ..."
 for i in {1..60}; do
-  if curl -fsS "$KEYCLOAK_URL/health/ready" >/dev/null 2>&1; then
+  if curl -fsS "$KEYCLOAK_URL/realms/$KEYCLOAK_REALM/.well-known/openid-configuration" >/dev/null 2>&1; then
     break
   fi
   if [[ $i -eq 60 ]]; then
@@ -75,19 +78,17 @@ REALM_STATUS=$(curl -fsS -o /dev/null -w "%{http_code}" \
   -H "Authorization: Bearer $ADMIN_TOKEN" \
   "$KEYCLOAK_URL/admin/realms/$KEYCLOAK_REALM" || true)
 
+# ── 4. Import realm from JSON (skipped if realm already exists) ──────────────
 if [[ "$REALM_STATUS" == "200" ]]; then
-  echo "[bootstrap] realm '$KEYCLOAK_REALM' already exists — nothing to do"
-  exit 0
-fi
-
-# ── 4. Import realm from JSON ────────────────────────────────────────────────
-if [[ "${1:-}" != "--skip-realm-import" ]]; then
+  echo "[bootstrap] realm '$KEYCLOAK_REALM' already exists — skipping import"
+elif [[ "${1:-}" != "--skip-realm-import" ]]; then
   echo "[bootstrap] importing realm from $REALM_EXPORT_PATH ..."
   curl -fsS -X POST \
     -H "Authorization: Bearer $ADMIN_TOKEN" \
     -H "Content-Type: application/json" \
     -d "@$REALM_EXPORT_PATH" \
-    "$KEYCLOAK_URL/admin/realms"
+    "$KEYCLOAK_URL/admin/realms" \
+    || { echo "[bootstrap] FATAL: realm import failed" >&2; exit 4; }
   echo "[bootstrap] realm imported"
 fi
 
@@ -105,8 +106,8 @@ if [ -n "${SMTP_HOST:-}" ] && [ -n "${SMTP_USERNAME:-}" ]; then
         \"auth\": true,
         \"user\": \"${SMTP_USERNAME}\",
         \"password\": \"${SMTP_PASSWORD}\",
-        \"ssl\": false,
-        \"starttls\": true
+        \"ssl\": ${SMTP_USE_SSL:-false},
+        \"starttls\": ${SMTP_USE_STARTTLS:-true}
       }
     }" \
     "$KEYCLOAK_URL/admin/realms/$KEYCLOAK_REALM" || echo "[bootstrap] SMTP config failed (non-fatal)"

@@ -1,62 +1,83 @@
-# Keycloak (FixMyText realm)
+# Keycloak (VeloBits realms)
 
-Identity provider for the microbackend. Keycloak currently **runs but is
-idle**: the `fixmytext` realm exists, two clients are configured, no users
-are provisioned, and no traffic flows through it. Activation (user
-migration + frontend OIDC + monolith token verification flip) is TODO.
+Identity provider for the FixMyText microbackend. Keycloak is active — the
+`Velobits-Dev` realm handles all auth in the development environment; the
+`Velobits-Prod` realm is imported on the production instance.
 
 ## Files
 
 | File | Purpose |
 |---|---|
-| `realm-export.json` | Declarative realm definition: name, clients, role, token lifespans |
-| `bootstrap.sh` | Idempotent post-boot helper (admin-API import + secret rotation) — usable in environments where Keycloak's `--import-realm` flag is unavailable |
+| `realm-export-dev.json` | Dev realm definition: `Velobits-Dev`, clients, roles, token lifespans |
+| `realm-export-prod.json` | Prod realm definition: `Velobits-Prod` — imported during production provisioning |
+| `bootstrap.sh` | Idempotent post-boot helper: configures SMTP + social IdPs (Google, GitHub) via Admin API |
 
-## Realm at a glance
+## Realms at a glance
 
-- **Realm**: `fixmytext`
-- **Default signature algorithm**: `RS256` (JWKS at `/realms/fixmytext/protocol/openid-connect/certs`)
-- **Access token lifespan**: 300s (5 min)
-- **SSO session**: idle 30 min, max 30 days
-- **Email verification**: required (`verifyEmail: true`)
-- **Self-registration**: disabled (TODO — decide whether to enable when frontend OIDC is wired)
-- **Default role**: `user`
+### Dev (`Velobits-Dev`)
+
+- **Default signature algorithm**: `RS256`
+- **JWKS URL**: `http://localhost:8080/realms/Velobits-Dev/protocol/openid-connect/certs`
+- **OIDC discovery**: `http://localhost:8080/realms/Velobits-Dev/.well-known/openid-configuration`
+- **Access token lifespan**: 300 s (5 min)
+- **SSO session**: idle 2 h, max 30 days
+- **Email verification**: required
+- **Self-registration**: allowed (gated by rate-limited `/auth/register` in account-svc)
+- **Brute force protection**: enabled (5 failures → 1-min lockout)
+- **Password policy**: min 8 chars, not username, not email, pbkdf2-sha256
+
+### Prod (`Velobits-Prod`)
+
+Same as Dev except:
+- **Self-registration** via Keycloak's own UI: **disabled** — registration must go through account-svc's `/auth/register` endpoint
+- **sslRequired**: `all` (dev uses `external`)
+- **OTP policy**: TOTP, HmacSHA1, 6 digits, 30 s period (available for users to enable)
 
 ### Clients
 
-| Client | Type | Flow | Used by |
-|---|---|---|---|
-| `fixmytext-frontend` | Public (PKCE) | Authorization Code | TODO — React SPA login/signup |
-| `fixmytext-backend` | Confidential (service account) | Client credentials | TODO — Admin API for user migration; future services for token introspection if needed |
+| Client | Realm | Type | Flow | Used by |
+|---|---|---|---|---|
+| `develop-fixmytext` | Dev | Public (PKCE) | Authorization Code | React SPA login/signup |
+| `fixmytext` | Prod | Public (PKCE) | Authorization Code | React SPA (prod) |
+| `fixmytext-backend` | Both | Confidential (service account) | Client credentials | Admin API (user creation, verification email) |
 
-The `fixmytext-backend` client secret in `realm-export.json` is a placeholder
-(`PLACEHOLDER_ROTATED_ON_FIRST_BOOT`). The real secret is rotated when you
-first start Keycloak and stored externally (1Password / GitHub repo secret).
+The `fixmytext-backend` client secret in the realm export files is a placeholder
+(`PLACEHOLDER_ROTATED_ON_FIRST_BOOT` / `PLACEHOLDER_ROTATED_ON_PRODUCTION_PROVISION`).
+Rotate it on first start and store the real value externally (1Password / GitHub secret).
 
 ## Local dev
 
-`docker compose --profile dev up keycloak` starts Keycloak with the realm
-auto-imported via the `--import-realm` flag. The admin console is at
-http://localhost:8080 (log in with `KEYCLOAK_ADMIN_PASSWORD` from `.env`).
+`docker compose --profile dev up` starts Keycloak with the dev realm
+auto-imported via `--import-realm`. The admin console is at
+http://localhost:8080 (log in with `KEYCLOAK_DEV_ADMIN_PASSWORD` from `.env`).
 
-OIDC discovery: http://localhost:8080/realms/fixmytext/.well-known/openid-configuration
+Social IdPs (Google, GitHub) and SMTP are configured by the `keycloak-bootstrap`
+service on first boot. Set the relevant env vars in `.env`:
 
-## Why it's idle for now
+```
+GOOGLE_OAUTH_CLIENT_ID=
+GOOGLE_OAUTH_CLIENT_SECRET=
+GH_OAUTH_CLIENT_ID=
+GH_OAUTH_CLIENT_SECRET=
+SMTP_HOST=
+SMTP_PORT=587
+SMTP_USERNAME=
+SMTP_PASSWORD=
+EMAIL_FROM=
+```
 
-Activating Keycloak requires:
-- Migrating existing User rows (~bcrypt hashes) into Keycloak via Admin API
-- Switching `JWT_ALGORITHM=HS256` → `RS256` in the monolith
-- Updating frontend to use OIDC redirect (or PKCE backchannel exchange)
-- Adding Kong route for `/api/v1/auth/*` → Keycloak
-- Configuring SMTP inside Keycloak for verification / reset emails
+## Production provisioning
 
-Setting up the realm now is cheap and de-risks the activation work — when
-the migration lands, Keycloak is ready to accept traffic.
+1. Stand up a Keycloak instance (separate from dev).
+2. Set `REALM_EXPORT_PATH=/path/to/realm-export-prod.json` and run `bootstrap.sh`.
+3. Rotate the `fixmytext-backend` client secret.
+4. Set `KEYCLOAK_REALM=Velobits-Prod` in all service `.env` files.
+5. Configure `KEYCLOAK_JWKS_URL`, `KEYCLOAK_ISSUER`, `KEYCLOAK_AUDIENCE` in each service.
 
 ## Production hardening (TODO)
 
 - HA Keycloak with external Infinispan cache
-- TLS termination at Kong / reverse proxy (Keycloak behind it)
+- TLS termination at reverse proxy (Keycloak behind it)
 - External secret store for client secrets (Vault / SOPS / cloud KMS)
 - Backup strategy for the Keycloak Postgres database
-- Realm-level email server config (currently empty)
+- Set OTP policy to required for admin accounts

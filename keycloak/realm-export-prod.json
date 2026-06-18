@@ -4,14 +4,33 @@
   "enabled": true,
   "sslRequired": "all",
   "accessTokenLifespan": 300,
-  "ssoSessionIdleTimeout": 1800,
+  "ssoSessionIdleTimeout": 7200,
   "ssoSessionMaxLifespan": 2592000,
-  "registrationAllowed": true,
+  "reuseRefreshTokens": false,
+  "refreshTokenMaxReuse": 0,
+  "registrationAllowed": false,
   "loginWithEmailAllowed": true,
   "duplicateEmailsAllowed": false,
   "resetPasswordAllowed": true,
   "verifyEmail": true,
   "defaultSignatureAlgorithm": "RS256",
+  "passwordPolicy": "length(8) and notUsername and notEmail and hashAlgorithm(pbkdf2-sha256) and hashIterations(100000)",
+  "bruteForceProtected": true,
+  "permanentLockout": false,
+  "maxFailureWaitSeconds": 900,
+  "minimumQuickLoginWaitSeconds": 60,
+  "waitIncrementSeconds": 60,
+  "quickLoginCheckMilliSeconds": 1000,
+  "maxDeltaTimeSeconds": 43200,
+  "failureFactor": 5,
+  "otpPolicy": {
+    "type": "totp",
+    "algorithm": "HmacSHA1",
+    "initialCounter": 0,
+    "digits": 6,
+    "lookAheadWindow": 1,
+    "period": 30
+  },
   "roles": {
     "realm": [
       {
@@ -28,11 +47,10 @@
       "enabled": true,
       "publicClient": true,
       "standardFlowEnabled": true,
-      "directAccessGrantsEnabled": true,
+      "directAccessGrantsEnabled": false,
       "serviceAccountsEnabled": false,
       "redirectUris": [
-        "https://fixmytext.velobits.dev/auth/callback",
-        "https://fixmytext.velobits.dev/*"
+        "https://fixmytext.velobits.dev/auth/callback"
       ],
       "webOrigins": [
         "https://fixmytext.velobits.dev"
@@ -40,7 +58,20 @@
       "attributes": {
         "pkce.code.challenge.method": "S256",
         "access.token.lifespan": "300"
-      }
+      },
+      "protocolMappers": [
+        {
+          "name": "fixmytext-backend-audience",
+          "protocol": "openid-connect",
+          "protocolMapper": "oidc-audience-mapper",
+          "consentRequired": false,
+          "config": {
+            "included.client.audience": "fixmytext-backend",
+            "id.token.claim": "false",
+            "access.token.claim": "true"
+          }
+        }
+      ]
     },
     {
       "clientId": "fixmytext-backend",
