@@ -283,22 +283,28 @@ div:not(.form-group):has(> input[type="email"])::before,
   transform: translateY(-50%) !important;
 }
 
-/* register.ftl col wrapper: contains only the input → 20px to input center */
+/* register.ftl col wrapper: contains only the input → center vertically.
+   col-xs-12 has 20px left padding before the input starts, so offset left
+   by that amount to land the icon 12px inside the input (matching login form). */
 div:not(.form-group):has(> #username)::before,
 div:not(.form-group):has(> #firstName)::before,
 div:not(.form-group):has(> #lastName)::before,
 div:not(.form-group):has(> #email)::before,
 div:not(.form-group):has(> input[type="email"])::before {
-  top: 20px !important;
+  top: 50% !important;
   transform: translateY(-50%) !important;
+  left: 32px !important;
 }
 
-/* password group: same height as input, top:50% = center */
+/* password group: same height as input, top:50% = center.
+   translateZ(0) forces the ::before onto its own GPU composite layer so it
+   paints above Chrome's security-promoted password input composite layer. */
 .pf-c-input-group:has(#password)::before,
 .pf-c-input-group:has(#password-new)::before,
 .pf-c-input-group:has(#password-confirm)::before {
   top: 50% !important;
-  transform: translateY(-50%) !important;
+  transform: translateY(-50%) translateZ(0) !important;
+  will-change: transform !important;
 }
 
 /* ── Per-field icon images ─────────────────────────────────────────────────── */
@@ -330,6 +336,7 @@ div:not(.form-group):has(> input[type="email"])::before {
 
 .pf-c-input-group {
   position: relative !important;
+  z-index: 0 !important;
   display: flex !important;
   align-items: center !important;
   background-color: var(--input-bg) !important;

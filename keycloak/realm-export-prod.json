@@ -1,20 +1,17 @@
 {
-  "_comment": "Production realm export — placeholder for production deploy. Not imported by docker compose --profile dev. Production deploy will (a) provision a separate Keycloak-Prod instance, (b) import this realm, (c) rotate every secret, (d) wire real SMTP, (e) configure social IdPs (Google, GitHub).",
   "realm": "Velobits-Prod",
   "enabled": true,
   "sslRequired": "all",
   "accessTokenLifespan": 300,
   "ssoSessionIdleTimeout": 7200,
   "ssoSessionMaxLifespan": 2592000,
-  "reuseRefreshTokens": false,
-  "refreshTokenMaxReuse": 0,
   "registrationAllowed": false,
   "loginWithEmailAllowed": true,
   "duplicateEmailsAllowed": false,
   "resetPasswordAllowed": true,
   "verifyEmail": true,
   "defaultSignatureAlgorithm": "RS256",
-  "passwordPolicy": "length(8) and notUsername and notEmail and hashAlgorithm(pbkdf2-sha256) and hashIterations(100000)",
+  "passwordPolicy": "length(12) and upperCase(1) and lowerCase(1) and digits(1) and specialChars(1) and notUsername and notEmail and hashAlgorithm(pbkdf2-sha256) and hashIterations(600000)",
   "bruteForceProtected": true,
   "permanentLockout": false,
   "maxFailureWaitSeconds": 900,
@@ -25,7 +22,7 @@
   "failureFactor": 5,
   "otpPolicy": {
     "type": "totp",
-    "algorithm": "HmacSHA1",
+    "algorithm": "HmacSHA256",
     "initialCounter": 0,
     "digits": 6,
     "lookAheadWindow": 1,
@@ -91,7 +88,8 @@
       "name": "Chat Production (placeholder for future Velobits product)",
       "enabled": false,
       "publicClient": true,
-      "redirectUris": ["https://chat.velobits.dev/*"],
+      "standardFlowEnabled": false,
+      "redirectUris": ["https://chat.velobits.dev/auth/callback"],
       "webOrigins": ["https://chat.velobits.dev"]
     },
     {
@@ -99,7 +97,8 @@
       "name": "Notes Production (placeholder for future Velobits product)",
       "enabled": false,
       "publicClient": true,
-      "redirectUris": ["https://notes.velobits.dev/*"],
+      "standardFlowEnabled": false,
+      "redirectUris": ["https://notes.velobits.dev/auth/callback"],
       "webOrigins": ["https://notes.velobits.dev"]
     }
   ],

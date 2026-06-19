@@ -25,6 +25,7 @@
 #   1  missing required env
 #   2  Keycloak not reachable
 #   3  admin auth failed
+#   4  realm import returned unexpected HTTP status
 
 set -euo pipefail
 
@@ -83,33 +84,46 @@ if [[ "$REALM_STATUS" == "200" ]]; then
   echo "[bootstrap] realm '$KEYCLOAK_REALM' already exists — skipping import"
 elif [[ "${1:-}" != "--skip-realm-import" ]]; then
   echo "[bootstrap] importing realm from $REALM_EXPORT_PATH ..."
-  curl -fsS -X POST \
+  IMPORT_CODE=$(curl -sS -o /dev/null -w "%{http_code}" -X POST \
     -H "Authorization: Bearer $ADMIN_TOKEN" \
     -H "Content-Type: application/json" \
     -d "@$REALM_EXPORT_PATH" \
-    "$KEYCLOAK_URL/admin/realms" \
-    || { echo "[bootstrap] FATAL: realm import failed" >&2; exit 4; }
-  echo "[bootstrap] realm imported"
+    "$KEYCLOAK_URL/admin/realms")
+  if [[ "$IMPORT_CODE" == "201" ]]; then
+    echo "[bootstrap] realm imported"
+  elif [[ "$IMPORT_CODE" == "409" ]]; then
+    echo "[bootstrap] realm already exists (409) — skipping"
+  else
+    echo "[bootstrap] FATAL: realm import failed with HTTP $IMPORT_CODE" >&2; exit 4
+  fi
 fi
 
 # ── Configure SMTP via Admin API (env vars not interpolated in realm JSON) ─────
 if [ -n "${SMTP_HOST:-}" ] && [ -n "${SMTP_USERNAME:-}" ]; then
   echo "[bootstrap] configuring realm SMTP..."
+  # Use heredoc + os.environ so secrets never appear in /proc/<pid>/cmdline.
+  SMTP_JSON=$(SMTP_HOST="$SMTP_HOST" SMTP_PORT="${SMTP_PORT:-587}" \
+    EMAIL_FROM="${EMAIL_FROM:-noreply@fixmytext.local}" \
+    SMTP_USERNAME="$SMTP_USERNAME" SMTP_PASSWORD="${SMTP_PASSWORD:-}" \
+    SMTP_USE_SSL="${SMTP_USE_SSL:-false}" SMTP_USE_STARTTLS="${SMTP_USE_STARTTLS:-true}" \
+    python3 - <<'PYEOF'
+import json, os
+print(json.dumps({'smtpServer': {
+    'host': os.environ['SMTP_HOST'],
+    'port': os.environ.get('SMTP_PORT', '587'),
+    'from': os.environ.get('EMAIL_FROM', 'noreply@fixmytext.local'),
+    'auth': True,
+    'user': os.environ['SMTP_USERNAME'],
+    'password': os.environ.get('SMTP_PASSWORD', ''),
+    'ssl': os.environ.get('SMTP_USE_SSL', 'false') == 'true',
+    'starttls': os.environ.get('SMTP_USE_STARTTLS', 'true') == 'true',
+}}))
+PYEOF
+  )
   curl -fsS -X PUT \
     -H "Authorization: Bearer $ADMIN_TOKEN" \
     -H "Content-Type: application/json" \
-    -d "{
-      \"smtpServer\": {
-        \"host\": \"${SMTP_HOST}\",
-        \"port\": \"${SMTP_PORT:-587}\",
-        \"from\": \"${EMAIL_FROM:-noreply@fixmytext.local}\",
-        \"auth\": true,
-        \"user\": \"${SMTP_USERNAME}\",
-        \"password\": \"${SMTP_PASSWORD}\",
-        \"ssl\": ${SMTP_USE_SSL:-false},
-        \"starttls\": ${SMTP_USE_STARTTLS:-true}
-      }
-    }" \
+    -d "$SMTP_JSON" \
     "$KEYCLOAK_URL/admin/realms/$KEYCLOAK_REALM" || echo "[bootstrap] SMTP config failed (non-fatal)"
   echo "[bootstrap] SMTP configured"
 fi
@@ -122,20 +136,16 @@ if [ -n "${GOOGLE_OAUTH_CLIENT_ID:-}" ] && [ -n "${GOOGLE_OAUTH_CLIENT_SECRET:-}
     -H "Authorization: Bearer $ADMIN_TOKEN" \
     "$KEYCLOAK_URL/admin/realms/$KEYCLOAK_REALM/identity-provider/instances/google" || true)
   if [ "$GOOGLE_STATUS" != "200" ]; then
+    GOOGLE_JSON=$(python3 -c "
+import json, sys
+print(json.dumps({'alias': 'google', 'providerId': 'google', 'enabled': True,
+    'trustEmail': False, 'config': {'clientId': sys.argv[1], 'clientSecret': sys.argv[2],
+    'defaultScope': 'openid email profile'}}))
+" "$GOOGLE_OAUTH_CLIENT_ID" "$GOOGLE_OAUTH_CLIENT_SECRET")
     curl -fsS -X POST \
       -H "Authorization: Bearer $ADMIN_TOKEN" \
       -H "Content-Type: application/json" \
-      -d "{
-        \"alias\": \"google\",
-        \"providerId\": \"google\",
-        \"enabled\": true,
-        \"trustEmail\": true,
-        \"config\": {
-          \"clientId\": \"${GOOGLE_OAUTH_CLIENT_ID}\",
-          \"clientSecret\": \"${GOOGLE_OAUTH_CLIENT_SECRET}\",
-          \"defaultScope\": \"openid email profile\"
-        }
-      }" \
+      -d "$GOOGLE_JSON" \
       "$KEYCLOAK_URL/admin/realms/$KEYCLOAK_REALM/identity-provider/instances" \
       || echo "[bootstrap] Google IdP creation failed (non-fatal)"
     echo "[bootstrap] Google IdP configured"
@@ -151,19 +161,15 @@ if [ -n "${GH_OAUTH_CLIENT_ID:-}" ] && [ -n "${GH_OAUTH_CLIENT_SECRET:-}" ]; the
     -H "Authorization: Bearer $ADMIN_TOKEN" \
     "$KEYCLOAK_URL/admin/realms/$KEYCLOAK_REALM/identity-provider/instances/github" || true)
   if [ "$GH_STATUS" != "200" ]; then
+    GH_JSON=$(python3 -c "
+import json, sys
+print(json.dumps({'alias': 'github', 'providerId': 'github', 'enabled': True,
+    'trustEmail': False, 'config': {'clientId': sys.argv[1], 'clientSecret': sys.argv[2]}}))
+" "$GH_OAUTH_CLIENT_ID" "$GH_OAUTH_CLIENT_SECRET")
     curl -fsS -X POST \
       -H "Authorization: Bearer $ADMIN_TOKEN" \
       -H "Content-Type: application/json" \
-      -d "{
-        \"alias\": \"github\",
-        \"providerId\": \"github\",
-        \"enabled\": true,
-        \"trustEmail\": true,
-        \"config\": {
-          \"clientId\": \"${GH_OAUTH_CLIENT_ID}\",
-          \"clientSecret\": \"${GH_OAUTH_CLIENT_SECRET}\"
-        }
-      }" \
+      -d "$GH_JSON" \
       "$KEYCLOAK_URL/admin/realms/$KEYCLOAK_REALM/identity-provider/instances" \
       || echo "[bootstrap] GitHub IdP creation failed (non-fatal)"
     echo "[bootstrap] GitHub IdP configured"
