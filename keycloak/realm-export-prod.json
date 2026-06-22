@@ -36,7 +36,9 @@
       }
     ]
   },
-  "defaultRoles": ["user"],
+  "defaultRoles": [
+    "user"
+  ],
   "clients": [
     {
       "clientId": "fixmytext",
@@ -54,7 +56,10 @@
       ],
       "attributes": {
         "pkce.code.challenge.method": "S256",
-        "access.token.lifespan": "300"
+        "access.token.lifespan": "300",
+        "backchannel.logout.url": "https://api.velobits.dev/api/v1/auth/backchannel-logout",
+        "backchannel.logout.session.required": "true",
+        "backchannel.logout.revoke.offline.tokens": "false"
       },
       "protocolMappers": [
         {
@@ -89,8 +94,16 @@
       "enabled": false,
       "publicClient": true,
       "standardFlowEnabled": false,
-      "redirectUris": ["https://chat.velobits.dev/auth/callback"],
-      "webOrigins": ["https://chat.velobits.dev"]
+      "redirectUris": [
+        "https://chat.velobits.dev/auth/callback"
+      ],
+      "webOrigins": [
+        "https://chat.velobits.dev"
+      ],
+      "directAccessGrantsEnabled": false,
+      "attributes": {
+        "pkce.code.challenge.method": "S256"
+      }
     },
     {
       "clientId": "notes",
@@ -98,8 +111,16 @@
       "enabled": false,
       "publicClient": true,
       "standardFlowEnabled": false,
-      "redirectUris": ["https://notes.velobits.dev/auth/callback"],
-      "webOrigins": ["https://notes.velobits.dev"]
+      "redirectUris": [
+        "https://notes.velobits.dev/auth/callback"
+      ],
+      "webOrigins": [
+        "https://notes.velobits.dev"
+      ],
+      "directAccessGrantsEnabled": false,
+      "attributes": {
+        "pkce.code.challenge.method": "S256"
+      }
     }
   ],
   "smtpServer": {},

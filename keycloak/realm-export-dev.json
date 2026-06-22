@@ -50,7 +50,10 @@
       ],
       "attributes": {
         "pkce.code.challenge.method": "S256",
-        "access.token.lifespan": "300"
+        "access.token.lifespan": "300",
+        "backchannel.logout.url": "http://account-svc:8000/api/v1/auth/backchannel-logout",
+        "backchannel.logout.session.required": "true",
+        "backchannel.logout.revoke.offline.tokens": "false"
       },
       "protocolMappers": [
         {

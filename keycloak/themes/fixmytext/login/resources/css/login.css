@@ -283,15 +283,18 @@ div:not(.form-group):has(> input[type="email"])::before,
   transform: translateY(-50%) !important;
 }
 
-/* register.ftl col wrapper: contains only the input → center vertically.
+/* register.ftl col wrapper: contains only the input → anchor to input center.
    col-xs-12 has 20px left padding before the input starts, so offset left
-   by that amount to land the icon 12px inside the input (matching login form). */
+   by that amount to land the icon 12px inside the input (matching login form).
+   Use a fixed top (half of ~40px input height) instead of 50% — when a
+   validation error span renders below the input it expands the container and
+   50% would drift below the input's vertical center. */
 div:not(.form-group):has(> #username)::before,
 div:not(.form-group):has(> #firstName)::before,
 div:not(.form-group):has(> #lastName)::before,
 div:not(.form-group):has(> #email)::before,
 div:not(.form-group):has(> input[type="email"])::before {
-  top: 50% !important;
+  top: 20px !important;
   transform: translateY(-50%) !important;
   left: 32px !important;
 }
@@ -381,6 +384,15 @@ div:not(.form-group):has(> input[type="email"])::before {
   display: flex !important;
   align-items: center !important;
   transition: color var(--t) !important;
+  /* Chrome promotes password inputs (focus AND autofill) to their own GPU
+     composite layer, which paints over sibling elements. position:relative +
+     z-index creates the stacking context; translateZ(0) forces the button onto
+     its own composite layer so it paints above the password input layer.
+     Same technique used on the lock ::before pseudo-element. */
+  position: relative !important;
+  z-index: 2 !important;
+  transform: translateZ(0) !important;
+  will-change: transform !important;
 }
 
 .pf-c-input-group > .pf-c-button:hover,
@@ -793,6 +805,39 @@ input[aria-invalid="true"],
   display: inline !important;
   cursor: pointer !important;
   line-height: 1 !important;
+}
+
+/* ── Legacy .checkbox wrapper (update-password / logout-sessions) ─────────────
+   Keycloak renders: .checkbox > label > input[type=checkbox] + text node.
+   The global `label { display:inline-block; margin-bottom:6px }` rule causes
+   the checkbox to be pushed out of flow and overlap the adjacent text.
+   Override to flex so the checkbox and label text sit side-by-side. */
+
+.checkbox {
+  margin: 4px 0 !important;
+}
+
+.checkbox label {
+  display: flex !important;
+  align-items: center !important;
+  gap: 8px !important;
+  color: var(--text-2) !important;
+  font-size: 0.82rem !important;
+  font-weight: 400 !important;
+  text-transform: none !important;
+  letter-spacing: normal !important;
+  margin: 0 !important;
+  cursor: pointer !important;
+  line-height: 1 !important;
+}
+
+.checkbox input[type="checkbox"] {
+  flex-shrink: 0 !important;
+  width: 14px !important;
+  height: 14px !important;
+  margin: 0 !important;
+  accent-color: var(--accent) !important;
+  cursor: pointer !important;
 }
 
 /* ── Form group spacing ───────────────────────────────────────────────────── */
