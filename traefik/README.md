@@ -5,8 +5,12 @@ Traefik is the **edge layer** of the VeloBits platform.
 ## Responsibility
 
 ```
-INTERNET → Traefik (subdomain → container) → Kong (path → microservice) → Backend services
+INTERNET → Traefik (subdomain/path rules) → Kong (path → microservice) → Backend services
 ```
+
+In local dev, Traefik uses the file provider rules in `gateway/traefik/rules/`
+instead of Docker labels. This avoids Docker API-version compatibility issues
+with newer Docker daemons.
 
 Traefik routes by **Host header**:
 
@@ -44,18 +48,25 @@ The Traefik dashboard is at `http://127.0.0.1:8090` (dev-only; localhost-bound f
 
 ## Adding a new subdomain route
 
-For a new container, add these labels to its `docker-compose.yml` entry:
+For a new local-dev route, add a router and service to
+`gateway/traefik/rules/*.yml`:
 
 ```yaml
-my-service:
-  # ... existing config ...
-  labels:
-    - "traefik.enable=true"
-    - "traefik.http.routers.my-service.rule=Host(`my-service-dev.velobits.dev`)"
-    - "traefik.http.services.my-service.loadbalancer.server.port=8000"
+http:
+  routers:
+    my-service:
+      rule: "Host(`my-service-dev.velobits.dev`)"
+      entryPoints:
+        - web
+      service: my-service-svc
+  services:
+    my-service-svc:
+      loadBalancer:
+        servers:
+          - url: "http://my-service:8000"
 ```
 
-That's it. Traefik picks up the labels automatically (`watch: true`).
+That's it. Traefik picks up file changes automatically (`watch: true`).
 
 ## Production deployment
 

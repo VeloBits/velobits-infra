@@ -77,16 +77,14 @@ Rotate it on first start and store the real value externally (1Password / GitHub
 
 ### User profile
 
-The dev realm ships a declarative `userProfileConfig` defining four attributes —
-`username`, `email`, `firstName`, `lastName`:
+The dev realm relies on Keycloak's built-in profile attributes
+(`username`, `email`, `firstName`, `lastName`). Keep declarative user-profile
+JSON out of `realm-export-dev.json`: Keycloak 26.0.8 rejects the top-level
+`userProfileConfig` field during `--import-realm`.
 
-- `username`: length 3–255, prohibited-characters + IDN-homograph validations
-- `email`: email-format validation, max length 255, **required** for the `user` role
-- `firstName` / `lastName`: max length 255, person-name prohibited-characters validation
-
-Each attribute grants view/edit permission to both the `admin` and `user` roles.
-New self-registrations receive the realm default role `user` (`defaultRoles: ["user"]`),
-which is the standard VeloBits role shared across products.
+New self-registrations receive the realm default role `user`
+(`defaultRoles: ["user"]`), which is the standard VeloBits role shared across
+products.
 
 ### Admin API authentication (account-svc)
 
