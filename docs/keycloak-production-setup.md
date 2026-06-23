@@ -14,6 +14,10 @@ that calls `bootstrap.sh` after Keycloak is healthy. It handles:
 - Realm import (idempotent — skips if realm already exists)
 - SMTP configuration via the Admin API
 - Google and GitHub OAuth IdP provisioning
+- `account-svc` service-account client provisioning (granted `manage-users` +
+  `view-users` from `realm-management`), when `KEYCLOAK_SERVICE_ACCOUNT_SECRET` is set
+- Backchannel-logout URL registration on the frontend client, when
+  `BACKCHANNEL_LOGOUT_URL` + `KEYCLOAK_FRONTEND_CLIENT_ID` are set
 
 **None of this runs automatically in production.** Production Keycloak must be
 bootstrapped manually (or via CI) using the same script.
@@ -87,7 +91,36 @@ creating them — re-running is safe.
 
 ---
 
-## Step 4 — Verify
+## Step 4 — Provision the account-svc Service Account + Backchannel Logout
+
+`account-svc` authenticates to the Admin API with a dedicated service account
+rather than master-realm credentials. Provide its secret and (optionally) the
+backchannel-logout wiring before running the script:
+
+```bash
+export KEYCLOAK_SERVICE_ACCOUNT_ID=account-svc     # default; clientId created in the prod realm
+export KEYCLOAK_SERVICE_ACCOUNT_SECRET=<generated-secret>   # openssl rand -base64 32
+
+# Register Keycloak's backchannel-logout callback on the public frontend client.
+# In prod the frontend (PKCE) client is `fixmytext`.
+export KEYCLOAK_FRONTEND_CLIENT_ID=fixmytext
+export BACKCHANNEL_LOGOUT_URL=https://api.velobits.dev/api/v1/auth/backchannel-logout
+```
+
+When `KEYCLOAK_SERVICE_ACCOUNT_SECRET` is set, `bootstrap.sh` creates (or refreshes
+the secret of) the `account-svc` confidential client with `serviceAccountsEnabled`
+and assigns it `manage-users` + `view-users` from `realm-management`. When
+`BACKCHANNEL_LOGOUT_URL` **and** `KEYCLOAK_FRONTEND_CLIENT_ID` are both set, it
+registers the logout URL on that frontend client and disables front-channel logout
+(`frontchannelLogout: false`) so SLO runs server-to-server. The URL must be on the
+PKCE frontend client — not the service-account client, which never holds user sessions.
+
+Set the same `KEYCLOAK_SERVICE_ACCOUNT_ID` / `KEYCLOAK_SERVICE_ACCOUNT_SECRET` in
+`account-svc`'s production `.env` so it uses the `client_credentials` grant.
+
+---
+
+## Step 5 — Verify
 
 1. **SMTP**: In the Keycloak admin console → **Realm settings → Email → Test connection**.
 2. **Social login**: Open `https://app.fixmytext.app/app/login`, click the Google or
@@ -143,6 +176,10 @@ To automate this as part of your production deploy pipeline:
     GOOGLE_OAUTH_CLIENT_SECRET: ${{ secrets.GOOGLE_OAUTH_CLIENT_SECRET }}
     GH_OAUTH_CLIENT_ID: ${{ secrets.GH_OAUTH_CLIENT_ID }}
     GH_OAUTH_CLIENT_SECRET: ${{ secrets.GH_OAUTH_CLIENT_SECRET }}
+    KEYCLOAK_SERVICE_ACCOUNT_ID: account-svc
+    KEYCLOAK_SERVICE_ACCOUNT_SECRET: ${{ secrets.KC_SERVICE_ACCOUNT_SECRET }}
+    KEYCLOAK_FRONTEND_CLIENT_ID: fixmytext
+    BACKCHANNEL_LOGOUT_URL: ${{ secrets.BACKCHANNEL_LOGOUT_URL }}
 ```
 
 Run this step **after** Keycloak is deployed and healthy, **before** any service
