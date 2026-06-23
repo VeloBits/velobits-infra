@@ -297,6 +297,11 @@ rep = json.load(sys.stdin)
 rep.setdefault('attributes', {})['backchannel.logout.url'] = os.environ['BACKCHANNEL_LOGOUT_URL']
 rep.setdefault('attributes', {})['backchannel.logout.session.required'] = 'true'
 rep.setdefault('attributes', {})['backchannel.logout.revoke.offline.tokens'] = 'false'
+# Disable front-channel logout so Keycloak uses back-channel SLO (server-to-server)
+# instead of requiring a browser to load an iframe. Front-channel fails for
+# server-initiated logouts (admin API / token revocation) since there is no
+# browser involved.
+rep['frontchannelLogout'] = False
 print(json.dumps(rep))")
     curl -sS -o /dev/null -X PUT \
       -H "Authorization: Bearer $ADMIN_TOKEN" \

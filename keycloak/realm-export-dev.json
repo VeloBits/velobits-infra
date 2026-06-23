@@ -41,8 +41,12 @@
       "directAccessGrantsEnabled": false,
       "serviceAccountsEnabled": false,
       "redirectUris": [
+        "http://localhost:3000/auth/callback",
+        "http://localhost:3000/app/auth/callback",
+        "http://localhost:3000/app/auth/silent-callback",
         "http://develop-fixmytext.velobits.dev/auth/callback",
-        "http://localhost:3000/auth/callback"
+        "http://develop-fixmytext.velobits.dev/app/auth/callback",
+        "http://develop-fixmytext.velobits.dev/app/auth/silent-callback"
       ],
       "webOrigins": [
         "http://develop-fixmytext.velobits.dev",
@@ -67,7 +71,8 @@
             "access.token.claim": "true"
           }
         }
-      ]
+      ],
+      "frontchannelLogout": false
     },
     {
       "clientId": "fixmytext-backend",
@@ -119,5 +124,107 @@
   ],
   "smtpServer": {},
   "loginTheme": "fixmytext",
-  "emailTheme": "fixmytext"
+  "emailTheme": "fixmytext",
+  "userProfileConfig": {
+    "attributes": [
+      {
+        "name": "username",
+        "displayName": "${username}",
+        "validations": {
+          "length": {
+            "min": 3,
+            "max": 255
+          },
+          "username-prohibited-characters": {},
+          "up-username-not-idn-homograph": {}
+        },
+        "permissions": {
+          "view": [
+            "admin",
+            "user"
+          ],
+          "edit": [
+            "admin",
+            "user"
+          ]
+        },
+        "multivalued": false
+      },
+      {
+        "name": "email",
+        "displayName": "${email}",
+        "validations": {
+          "email": {},
+          "length": {
+            "max": 255
+          }
+        },
+        "required": {
+          "roles": [
+            "user"
+          ]
+        },
+        "permissions": {
+          "view": [
+            "admin",
+            "user"
+          ],
+          "edit": [
+            "admin",
+            "user"
+          ]
+        },
+        "multivalued": false
+      },
+      {
+        "name": "firstName",
+        "displayName": "${firstName}",
+        "validations": {
+          "length": {
+            "max": 255
+          },
+          "person-name-prohibited-characters": {}
+        },
+        "permissions": {
+          "view": [
+            "admin",
+            "user"
+          ],
+          "edit": [
+            "admin",
+            "user"
+          ]
+        },
+        "multivalued": false
+      },
+      {
+        "name": "lastName",
+        "displayName": "${lastName}",
+        "validations": {
+          "length": {
+            "max": 255
+          },
+          "person-name-prohibited-characters": {}
+        },
+        "permissions": {
+          "view": [
+            "admin",
+            "user"
+          ],
+          "edit": [
+            "admin",
+            "user"
+          ]
+        },
+        "multivalued": false
+      }
+    ],
+    "groups": [
+      {
+        "name": "user-metadata",
+        "displayHeader": "User metadata",
+        "displayDescription": "Attributes, which refer to user metadata"
+      }
+    ]
+  }
 }
