@@ -57,6 +57,7 @@
       "attributes": {
         "pkce.code.challenge.method": "S256",
         "access.token.lifespan": "300",
+        "post.logout.redirect.uris": "https://fixmytext.velobits.dev/app/login",
         "backchannel.logout.url": "https://api.velobits.dev/api/v1/auth/backchannel-logout",
         "backchannel.logout.session.required": "true",
         "backchannel.logout.revoke.offline.tokens": "false"
