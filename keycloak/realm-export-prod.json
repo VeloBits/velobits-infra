@@ -9,7 +9,7 @@
   "loginWithEmailAllowed": true,
   "duplicateEmailsAllowed": false,
   "resetPasswordAllowed": true,
-  "verifyEmail": true,
+  "verifyEmail": false,
   "defaultSignatureAlgorithm": "RS256",
   "passwordPolicy": "length(12) and upperCase(1) and lowerCase(1) and digits(1) and specialChars(1) and notUsername and notEmail and hashAlgorithm(pbkdf2-sha256) and hashIterations(600000)",
   "bruteForceProtected": true,
@@ -49,7 +49,9 @@
       "directAccessGrantsEnabled": false,
       "serviceAccountsEnabled": false,
       "redirectUris": [
-        "https://fixmytext.velobits.dev/auth/callback"
+        "https://fixmytext.velobits.dev/auth/callback",
+        "https://fixmytext.velobits.dev/app/auth/callback",
+        "https://fixmytext.velobits.dev/app/auth/silent-callback"
       ],
       "webOrigins": [
         "https://fixmytext.velobits.dev"
@@ -57,7 +59,7 @@
       "attributes": {
         "pkce.code.challenge.method": "S256",
         "access.token.lifespan": "300",
-        "post.logout.redirect.uris": "https://fixmytext.velobits.dev/app/login",
+        "post.logout.redirect.uris": "https://fixmytext.velobits.dev/app/##https://fixmytext.velobits.dev/app/login",
         "backchannel.logout.url": "https://api.velobits.dev/api/v1/auth/backchannel-logout",
         "backchannel.logout.session.required": "true",
         "backchannel.logout.revoke.offline.tokens": "false"
@@ -85,6 +87,10 @@
       "standardFlowEnabled": false,
       "directAccessGrantsEnabled": false,
       "secret": "PLACEHOLDER_ROTATED_ON_PRODUCTION_PROVISION",
+      "redirectUris": [
+        "https://fixmytext.velobits.dev",
+        "https://fixmytext.velobits.dev/*"
+      ],
       "attributes": {
         "access.token.lifespan": "300"
       }

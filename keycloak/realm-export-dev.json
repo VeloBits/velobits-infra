@@ -9,7 +9,7 @@
   "loginWithEmailAllowed": true,
   "duplicateEmailsAllowed": false,
   "resetPasswordAllowed": true,
-  "verifyEmail": true,
+  "verifyEmail": false,
   "defaultSignatureAlgorithm": "RS256",
   "passwordPolicy": "length(8) and upperCase(1) and lowerCase(1) and digits(1) and notUsername and notEmail and hashAlgorithm(pbkdf2-sha256) and hashIterations(600000)",
   "bruteForceProtected": true,
@@ -55,7 +55,7 @@
       "attributes": {
         "pkce.code.challenge.method": "S256",
         "access.token.lifespan": "300",
-        "post.logout.redirect.uris": "http://localhost:3000/app/login##http://develop-fixmytext.velobits.dev/app/login",
+        "post.logout.redirect.uris": "http://localhost:3000/app/##http://develop-fixmytext.velobits.dev/app/##http://localhost:3000/app/login##http://develop-fixmytext.velobits.dev/app/login",
         "backchannel.logout.url": "http://account-svc:8000/api/v1/auth/backchannel-logout",
         "backchannel.logout.session.required": "true",
         "backchannel.logout.revoke.offline.tokens": "false"
@@ -84,6 +84,12 @@
       "standardFlowEnabled": false,
       "directAccessGrantsEnabled": false,
       "secret": "PLACEHOLDER_ROTATED_ON_FIRST_BOOT",
+      "redirectUris": [
+        "http://localhost:3000",
+        "http://localhost:3000/*",
+        "http://develop-fixmytext.velobits.dev",
+        "http://develop-fixmytext.velobits.dev/*"
+      ],
       "attributes": {
         "access.token.lifespan": "300"
       }

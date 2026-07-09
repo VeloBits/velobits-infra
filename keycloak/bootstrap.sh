@@ -177,6 +177,34 @@ print(json.dumps({'alias': 'github', 'providerId': 'github', 'enabled': True,
   fi
 fi
 
+# ── Disable the "Update Account Information" page on social first-login ───────
+# The built-in "first broker login" flow's review-profile step defaults to
+# "missing", which lets a Google/GitHub user edit username/email on first
+# sign-in. Not a security hole (linking to an existing account still requires
+# downstream email/password verification), but the fields shouldn't be
+# editable there. Set it to "off" so Keycloak uses the provider's attributes
+# as-is. Done here (not in realm-export.json) because the built-in flow isn't
+# part of the export, and the compose --import-realm OVERWRITE would otherwise
+# reset it to the default. Idempotent.
+echo "[bootstrap] disabling review-profile page on first broker login..."
+REVIEW_CFG_ID=$(curl -fsS \
+  -H "Authorization: Bearer $ADMIN_TOKEN" \
+  "$KEYCLOAK_URL/admin/realms/$KEYCLOAK_REALM/authentication/flows/first%20broker%20login/executions" \
+  | python3 -c "import json,sys
+execs=json.load(sys.stdin)
+print(next((e.get('authenticationConfig','') for e in execs if e.get('providerId')=='idp-review-profile'), ''))" 2>/dev/null || true)
+if [ -n "$REVIEW_CFG_ID" ]; then
+  curl -fsS -X PUT \
+    -H "Authorization: Bearer $ADMIN_TOKEN" \
+    -H "Content-Type: application/json" \
+    -d "{\"id\":\"$REVIEW_CFG_ID\",\"alias\":\"review profile config\",\"config\":{\"update.profile.on.first.login\":\"off\"}}" \
+    "$KEYCLOAK_URL/admin/realms/$KEYCLOAK_REALM/authentication/config/$REVIEW_CFG_ID" \
+    && echo "[bootstrap] review-profile set to off" \
+    || echo "[bootstrap] review-profile config update failed (non-fatal)"
+else
+  echo "[bootstrap] review-profile execution has no config id — skipping (non-fatal)"
+fi
+
 # ── Dedicated service account for account-svc ─────────────────────────────
 # Creates an OIDC client with serviceAccountsEnabled=true in the product realm
 # and grants it the manage-users role from realm-management so account-svc can
