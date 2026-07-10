@@ -44,9 +44,11 @@
         "http://localhost:3000/auth/callback",
         "http://localhost:3000/app/auth/callback",
         "http://localhost:3000/app/auth/silent-callback",
+        "http://localhost:3000/app/auth/silent-callback.html",
         "http://develop-fixmytext.velobits.dev/auth/callback",
         "http://develop-fixmytext.velobits.dev/app/auth/callback",
-        "http://develop-fixmytext.velobits.dev/app/auth/silent-callback"
+        "http://develop-fixmytext.velobits.dev/app/auth/silent-callback",
+        "http://develop-fixmytext.velobits.dev/app/auth/silent-callback.html"
       ],
       "webOrigins": [
         "http://develop-fixmytext.velobits.dev",
