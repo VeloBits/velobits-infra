@@ -51,7 +51,8 @@
       "redirectUris": [
         "https://fixmytext.velobits.dev/auth/callback",
         "https://fixmytext.velobits.dev/app/auth/callback",
-        "https://fixmytext.velobits.dev/app/auth/silent-callback"
+        "https://fixmytext.velobits.dev/app/auth/silent-callback",
+        "https://fixmytext.velobits.dev/app/auth/silent-callback.html"
       ],
       "webOrigins": [
         "https://fixmytext.velobits.dev"
