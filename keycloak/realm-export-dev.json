@@ -3,14 +3,23 @@
   "enabled": true,
   "sslRequired": "external",
   "accessTokenLifespan": 300,
-  "ssoSessionIdleTimeout": 1800,
+  "ssoSessionIdleTimeout": 7200,
   "ssoSessionMaxLifespan": 2592000,
   "registrationAllowed": true,
   "loginWithEmailAllowed": true,
   "duplicateEmailsAllowed": false,
   "resetPasswordAllowed": true,
-  "verifyEmail": true,
+  "verifyEmail": false,
   "defaultSignatureAlgorithm": "RS256",
+  "passwordPolicy": "length(8) and upperCase(1) and lowerCase(1) and digits(1) and notUsername and notEmail and hashAlgorithm(pbkdf2-sha256) and hashIterations(600000)",
+  "bruteForceProtected": true,
+  "permanentLockout": false,
+  "maxFailureWaitSeconds": 900,
+  "minimumQuickLoginWaitSeconds": 60,
+  "waitIncrementSeconds": 60,
+  "quickLoginCheckMilliSeconds": 1000,
+  "maxDeltaTimeSeconds": 43200,
+  "failureFactor": 5,
   "roles": {
     "realm": [
       {
@@ -19,7 +28,9 @@
       }
     ]
   },
-  "defaultRoles": ["user"],
+  "defaultRoles": [
+    "user"
+  ],
   "clients": [
     {
       "clientId": "develop-fixmytext",
@@ -27,13 +38,17 @@
       "enabled": true,
       "publicClient": true,
       "standardFlowEnabled": true,
-      "directAccessGrantsEnabled": true,
+      "directAccessGrantsEnabled": false,
       "serviceAccountsEnabled": false,
       "redirectUris": [
-        "http://develop-fixmytext.velobits.dev/auth/callback",
-        "http://develop-fixmytext.velobits.dev/*",
         "http://localhost:3000/auth/callback",
-        "http://localhost:3000/*"
+        "http://localhost:3000/app/auth/callback",
+        "http://localhost:3000/app/auth/silent-callback",
+        "http://localhost:3000/app/auth/silent-callback.html",
+        "http://develop-fixmytext.velobits.dev/auth/callback",
+        "http://develop-fixmytext.velobits.dev/app/auth/callback",
+        "http://develop-fixmytext.velobits.dev/app/auth/silent-callback",
+        "http://develop-fixmytext.velobits.dev/app/auth/silent-callback.html"
       ],
       "webOrigins": [
         "http://develop-fixmytext.velobits.dev",
@@ -41,8 +56,26 @@
       ],
       "attributes": {
         "pkce.code.challenge.method": "S256",
-        "access.token.lifespan": "300"
-      }
+        "access.token.lifespan": "300",
+        "post.logout.redirect.uris": "http://localhost:3000/app/##http://develop-fixmytext.velobits.dev/app/##http://localhost:3000/app/login##http://develop-fixmytext.velobits.dev/app/login",
+        "backchannel.logout.url": "http://account-svc:8000/api/v1/auth/backchannel-logout",
+        "backchannel.logout.session.required": "true",
+        "backchannel.logout.revoke.offline.tokens": "false"
+      },
+      "protocolMappers": [
+        {
+          "name": "fixmytext-backend-audience",
+          "protocol": "openid-connect",
+          "protocolMapper": "oidc-audience-mapper",
+          "consentRequired": false,
+          "config": {
+            "included.client.audience": "fixmytext-backend",
+            "id.token.claim": "false",
+            "access.token.claim": "true"
+          }
+        }
+      ],
+      "frontchannelLogout": false
     },
     {
       "clientId": "fixmytext-backend",
@@ -53,6 +86,12 @@
       "standardFlowEnabled": false,
       "directAccessGrantsEnabled": false,
       "secret": "PLACEHOLDER_ROTATED_ON_FIRST_BOOT",
+      "redirectUris": [
+        "http://localhost:3000",
+        "http://localhost:3000/*",
+        "http://develop-fixmytext.velobits.dev",
+        "http://develop-fixmytext.velobits.dev/*"
+      ],
       "attributes": {
         "access.token.lifespan": "300"
       }
@@ -62,9 +101,14 @@
       "name": "Chat Dev (placeholder for future Velobits product)",
       "enabled": false,
       "publicClient": true,
-      "standardFlowEnabled": true,
-      "redirectUris": ["http://develop-chat.velobits.dev/*"],
-      "webOrigins": ["http://develop-chat.velobits.dev"],
+      "standardFlowEnabled": false,
+      "directAccessGrantsEnabled": false,
+      "redirectUris": [
+        "http://develop-chat.velobits.dev/auth/callback"
+      ],
+      "webOrigins": [
+        "http://develop-chat.velobits.dev"
+      ],
       "attributes": {
         "pkce.code.challenge.method": "S256"
       }
@@ -74,9 +118,14 @@
       "name": "Notes Dev (placeholder for future Velobits product)",
       "enabled": false,
       "publicClient": true,
-      "standardFlowEnabled": true,
-      "redirectUris": ["http://develop-notes.velobits.dev/*"],
-      "webOrigins": ["http://develop-notes.velobits.dev"],
+      "standardFlowEnabled": false,
+      "directAccessGrantsEnabled": false,
+      "redirectUris": [
+        "http://develop-notes.velobits.dev/auth/callback"
+      ],
+      "webOrigins": [
+        "http://develop-notes.velobits.dev"
+      ],
       "attributes": {
         "pkce.code.challenge.method": "S256"
       }

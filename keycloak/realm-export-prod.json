@@ -1,17 +1,33 @@
 {
-  "_comment": "Production realm export — placeholder for production deploy. Not imported by docker compose --profile dev. Production deploy will (a) provision a separate Keycloak-Prod instance, (b) import this realm, (c) rotate every secret, (d) wire real SMTP, (e) configure social IdPs (Google, GitHub).",
   "realm": "Velobits-Prod",
   "enabled": true,
   "sslRequired": "all",
   "accessTokenLifespan": 300,
-  "ssoSessionIdleTimeout": 1800,
+  "ssoSessionIdleTimeout": 7200,
   "ssoSessionMaxLifespan": 2592000,
-  "registrationAllowed": true,
+  "registrationAllowed": false,
   "loginWithEmailAllowed": true,
   "duplicateEmailsAllowed": false,
   "resetPasswordAllowed": true,
-  "verifyEmail": true,
+  "verifyEmail": false,
   "defaultSignatureAlgorithm": "RS256",
+  "passwordPolicy": "length(12) and upperCase(1) and lowerCase(1) and digits(1) and specialChars(1) and notUsername and notEmail and hashAlgorithm(pbkdf2-sha256) and hashIterations(600000)",
+  "bruteForceProtected": true,
+  "permanentLockout": false,
+  "maxFailureWaitSeconds": 900,
+  "minimumQuickLoginWaitSeconds": 60,
+  "waitIncrementSeconds": 60,
+  "quickLoginCheckMilliSeconds": 1000,
+  "maxDeltaTimeSeconds": 43200,
+  "failureFactor": 5,
+  "otpPolicy": {
+    "type": "totp",
+    "algorithm": "HmacSHA256",
+    "initialCounter": 0,
+    "digits": 6,
+    "lookAheadWindow": 1,
+    "period": 30
+  },
   "roles": {
     "realm": [
       {
@@ -20,7 +36,9 @@
       }
     ]
   },
-  "defaultRoles": ["user"],
+  "defaultRoles": [
+    "user"
+  ],
   "clients": [
     {
       "clientId": "fixmytext",
@@ -28,19 +46,38 @@
       "enabled": true,
       "publicClient": true,
       "standardFlowEnabled": true,
-      "directAccessGrantsEnabled": true,
+      "directAccessGrantsEnabled": false,
       "serviceAccountsEnabled": false,
       "redirectUris": [
         "https://fixmytext.velobits.dev/auth/callback",
-        "https://fixmytext.velobits.dev/*"
+        "https://fixmytext.velobits.dev/app/auth/callback",
+        "https://fixmytext.velobits.dev/app/auth/silent-callback",
+        "https://fixmytext.velobits.dev/app/auth/silent-callback.html"
       ],
       "webOrigins": [
         "https://fixmytext.velobits.dev"
       ],
       "attributes": {
         "pkce.code.challenge.method": "S256",
-        "access.token.lifespan": "300"
-      }
+        "access.token.lifespan": "300",
+        "post.logout.redirect.uris": "https://fixmytext.velobits.dev/app/##https://fixmytext.velobits.dev/app/login",
+        "backchannel.logout.url": "https://api.velobits.dev/api/v1/auth/backchannel-logout",
+        "backchannel.logout.session.required": "true",
+        "backchannel.logout.revoke.offline.tokens": "false"
+      },
+      "protocolMappers": [
+        {
+          "name": "fixmytext-backend-audience",
+          "protocol": "openid-connect",
+          "protocolMapper": "oidc-audience-mapper",
+          "consentRequired": false,
+          "config": {
+            "included.client.audience": "fixmytext-backend",
+            "id.token.claim": "false",
+            "access.token.claim": "true"
+          }
+        }
+      ]
     },
     {
       "clientId": "fixmytext-backend",
@@ -51,6 +88,10 @@
       "standardFlowEnabled": false,
       "directAccessGrantsEnabled": false,
       "secret": "PLACEHOLDER_ROTATED_ON_PRODUCTION_PROVISION",
+      "redirectUris": [
+        "https://fixmytext.velobits.dev",
+        "https://fixmytext.velobits.dev/*"
+      ],
       "attributes": {
         "access.token.lifespan": "300"
       }
@@ -60,16 +101,34 @@
       "name": "Chat Production (placeholder for future Velobits product)",
       "enabled": false,
       "publicClient": true,
-      "redirectUris": ["https://chat.velobits.dev/*"],
-      "webOrigins": ["https://chat.velobits.dev"]
+      "standardFlowEnabled": false,
+      "redirectUris": [
+        "https://chat.velobits.dev/auth/callback"
+      ],
+      "webOrigins": [
+        "https://chat.velobits.dev"
+      ],
+      "directAccessGrantsEnabled": false,
+      "attributes": {
+        "pkce.code.challenge.method": "S256"
+      }
     },
     {
       "clientId": "notes",
       "name": "Notes Production (placeholder for future Velobits product)",
       "enabled": false,
       "publicClient": true,
-      "redirectUris": ["https://notes.velobits.dev/*"],
-      "webOrigins": ["https://notes.velobits.dev"]
+      "standardFlowEnabled": false,
+      "redirectUris": [
+        "https://notes.velobits.dev/auth/callback"
+      ],
+      "webOrigins": [
+        "https://notes.velobits.dev"
+      ],
+      "directAccessGrantsEnabled": false,
+      "attributes": {
+        "pkce.code.challenge.method": "S256"
+      }
     }
   ],
   "smtpServer": {},
