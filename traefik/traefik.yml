@@ -2,13 +2,11 @@
 #
 # Responsibilities:
 #   1. Accept all *.velobits.dev traffic on :80 (TLS termination at production deploy).
-#   2. Route by Host header to the right service container (docker provider).
-#   3. Route by Host + Path to split content-app vs web-app within a single
-#      hostname (file provider, rules in gateway/traefik/rules/).
+#   2. Route dev hostnames and paths via the file provider
+#      (rules in gateway/traefik/rules/).
 #
 # Providers:
-#   - docker provider: active (Kong + Keycloak-Dev via Docker labels)
-#   - file provider: path-prefix rules in gateway/traefik/rules/
+#   - file provider: hostname/path rules in gateway/traefik/rules/
 
 api:
   dashboard: true
@@ -19,10 +17,6 @@ entryPoints:
     address: ":80"
 
 providers:
-  docker:
-    exposedByDefault: false
-    network: fixmytext-net
-    watch: true
   file:
     directory: /etc/traefik/rules
     watch: true
