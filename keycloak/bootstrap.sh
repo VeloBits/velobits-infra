@@ -43,9 +43,16 @@ if [[ -z "${KEYCLOAK_ADMIN_PASSWORD:-}" ]]; then
 fi
 
 # ── 1. Wait for Keycloak to be reachable ─────────────────────────────────────
-echo "[bootstrap] waiting for Keycloak at $KEYCLOAK_URL ..."
+# Keycloak 25+ serves /health/* on the management interface (:9000), NOT the
+# main HTTP port — polling $KEYCLOAK_URL/health/ready 404s forever on KC 26.
+# Probe the master realm on the main port instead: it returns 200 exactly when
+# the server is up and serving realms. Set KEYCLOAK_HEALTH_URL to a reachable
+# management-port endpoint (e.g. http://keycloak:9000/health/ready) to poll a
+# real health endpoint instead.
+READY_URL="${KEYCLOAK_HEALTH_URL:-$KEYCLOAK_URL/realms/master}"
+echo "[bootstrap] waiting for Keycloak at $READY_URL ..."
 for i in {1..60}; do
-  if curl -fsS "$KEYCLOAK_URL/health/ready" >/dev/null 2>&1; then
+  if curl -fsS "$READY_URL" >/dev/null 2>&1; then
     break
   fi
   if [[ $i -eq 60 ]]; then

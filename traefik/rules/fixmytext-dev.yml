@@ -10,8 +10,10 @@
 http:
   routers:
     # Content app: static pages, SEO tool pages, share pages, marketing root.
+    # Traefik v3 requires exactly one argument per PathPrefix matcher — the
+    # v2 multi-arg form is rejected and silently disables the router.
     fixmytext-dev-content:
-      rule: "Host(`develop-fixmytext.velobits.dev`) && (Path(`/`) || PathPrefix(`/tools`, `/about`, `/pricing`, `/share`))"
+      rule: "Host(`develop-fixmytext.velobits.dev`) && (Path(`/`) || PathPrefix(`/tools`) || PathPrefix(`/about`) || PathPrefix(`/pricing`) || PathPrefix(`/share`))"
       priority: 20
       service: fixmytext-dev-content-svc
       entryPoints:
