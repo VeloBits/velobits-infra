@@ -1,14 +1,29 @@
-# Path-prefix routing rules for develop-fixmytext.velobits.dev.
+# Dev Traefik routes for local VeloBits/FixMyText services.
 #
-# Two apps share one hostname, split by path:
-#   content-app (Next.js)  — /, /tools/*, /about, /pricing, /share/*
-#   web-app     (Vite SPA) — /app/* (editor, dashboard, auth)
+# Frontend Docker compose publishes the router/content apps on host ports.
+# Backend services live on the same Docker network as Traefik.
 #
 # Higher priority wins when both routers could match.
 # Prod equivalents (fixmytext.velobits.dev) are added at production deploy.
 
 http:
   routers:
+    # API gateway: Kong routes /api/v1/* to backend services.
+    fixmytext-dev-api:
+      rule: "Host(`api-dev.velobits.dev`)"
+      priority: 10
+      service: fixmytext-dev-kong-svc
+      entryPoints:
+        - web
+
+    # Identity provider: Keycloak dev realm.
+    fixmytext-dev-auth:
+      rule: "Host(`auth-dev.velobits.dev`)"
+      priority: 10
+      service: fixmytext-dev-keycloak-svc
+      entryPoints:
+        - web
+
     # Content app: static pages, SEO tool pages, share pages, marketing root.
     # Traefik v3 requires exactly one argument per PathPrefix matcher — the
     # v2 multi-arg form is rejected and silently disables the router.
@@ -28,12 +43,22 @@ http:
         - web
 
   services:
+    fixmytext-dev-kong-svc:
+      loadBalancer:
+        servers:
+          - url: "http://kong:8000"
+
+    fixmytext-dev-keycloak-svc:
+      loadBalancer:
+        servers:
+          - url: "http://keycloak-dev:8080"
+
     fixmytext-dev-content-svc:
       loadBalancer:
         servers:
-          - url: "http://content-app:3001"
+          - url: "http://host.docker.internal:3103"
 
     fixmytext-dev-web-svc:
       loadBalancer:
         servers:
-          - url: "http://web-app:3000"
+          - url: "http://host.docker.internal:3000"
