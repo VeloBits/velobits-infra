@@ -34,7 +34,8 @@ http:
       entryPoints:
         - web
 
-    # Web app: Vite SPA served under /app/*.
+    # Web app: everything not claimed by the content router above
+    # (priority 20 beats 10), including /app/*.
     fixmytext-dev-web:
       rule: "Host(`develop-fixmytext.velobits.dev`)"
       priority: 10
@@ -52,6 +53,11 @@ http:
       loadBalancer:
         servers:
           - url: "http://keycloak-dev:8080"
+
+    fixmytext-dev-content-svc:
+      loadBalancer:
+        servers:
+          - url: "http://host.docker.internal:3103"
 
     fixmytext-dev-web-svc:
       loadBalancer:
