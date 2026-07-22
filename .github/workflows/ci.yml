@@ -1,0 +1,156 @@
+# Infra Config Validation
+# Validates Traefik rules, Keycloak realm exports, and the compose file against
+# the exact image tags pinned in docker-compose.yml. Ported from
+# fixmytext-backend's ci.yml when Traefik/Keycloak were extracted to this repo.
+name: Infra Test & Validate
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+jobs:
+  validate:
+    name: Traefik & Keycloak Config Validation
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+
+      - name: Validate Traefik dynamic rules
+        # Boot success is NOT the gate — Traefik boots cleanly with broken
+        # rules and just disables the affected router. Assert via the API that
+        # every file-provider router actually loaded as "enabled".
+        run: |
+          docker run -d --name traefik-ci -p 127.0.0.1:18080:8080 \
+            -v "$PWD/traefik/rules:/etc/traefik/rules:ro" \
+            traefik:v3.2 \
+            --api.insecure=true \
+            --providers.file.directory=/etc/traefik/rules \
+            --providers.file.watch=false \
+            --entrypoints.web.address=:80
+
+          for i in $(seq 1 15); do
+            if curl -fsS http://127.0.0.1:18080/api/http/routers >/dev/null 2>&1; then
+              break
+            fi
+            if [ "$i" -eq 15 ]; then
+              echo "::error::Traefik API did not come up"
+              docker logs traefik-ci
+              exit 1
+            fi
+            sleep 1
+          done
+
+          ROUTERS=$(curl -fsS http://127.0.0.1:18080/api/http/routers)
+          FILE_ROUTERS=$(echo "$ROUTERS" | jq '[.[] | select(.provider == "file")]')
+
+          # Guard against a vacuous pass (wrong mount path => zero routers).
+          if [ "$(echo "$FILE_ROUTERS" | jq 'length')" -lt 2 ]; then
+            echo "::error::Expected at least 2 file-provider routers, got fewer — rules did not load"
+            echo "$ROUTERS" | jq .
+            docker logs traefik-ci
+            exit 1
+          fi
+
+          if ! echo "$FILE_ROUTERS" | jq -e '[.[] | select(.status != "enabled")] | length == 0' >/dev/null; then
+            echo "::error::One or more Traefik file-provider routers failed to load"
+            echo "$FILE_ROUTERS" | jq '[.[] | {name, status, error}]'
+            docker logs traefik-ci
+            exit 1
+          fi
+          echo "All Traefik file-provider routers enabled"
+
+      - name: Clean up Traefik container
+        if: always()
+        run: docker rm -f traefik-ci 2>/dev/null || true
+
+      - name: Validate Keycloak realm exports (JSON)
+        run: |
+          for f in keycloak/realm-export*.json; do
+            echo "checking $f"
+            python -m json.tool "$f" > /dev/null
+          done
+
+      - name: Validate docker-compose config
+        # Interpolation-required vars get dummies so config rendering passes.
+        run: |
+          printf '%s\n' \
+            'KEYCLOAK_DEV_ADMIN_PASSWORD=ci-stub' \
+            'KEYCLOAK_DEV_DB_PASSWORD=ci-stub' > .env
+          docker compose config -q
+          rm -f .env
+
+  # Cheap path filter so the heavy Keycloak import gate (~90s + 691MB image
+  # pull) only runs when the realm/theme files actually change.
+  changes:
+    name: Detect changed paths
+    if: github.event_name != 'workflow_dispatch'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: read
+    outputs:
+      keycloak: ${{ steps.filter.outputs.keycloak }}
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+
+      - name: Filter paths
+        id: filter
+        uses: dorny/paths-filter@v3
+        with:
+          filters: |
+            keycloak:
+              - 'keycloak/**'
+
+  keycloak-import:
+    name: Keycloak Realm Import Gate
+    runs-on: ubuntu-latest
+    needs: [changes]
+    # Runs when keycloak/** changed, or on manual dispatch. !cancelled() keeps
+    # it eligible when `changes` is skipped (workflow_dispatch).
+    if: >-
+      !cancelled() && (
+        needs.changes.outputs.keycloak == 'true' ||
+        github.event_name == 'workflow_dispatch'
+      )
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+
+      - name: Boot Keycloak and import dev realm
+        # Verifies realm-export-dev.json actually imports on the pinned image.
+        # Note: /health/* lives on the management port :9000 in KC 26, and the
+        # image has no curl — poll the container logs instead.
+        run: |
+          docker run -d --name kc-ci \
+            -v "$PWD/keycloak/realm-export-dev.json:/opt/keycloak/data/import/realm.json:ro" \
+            -e KC_BOOTSTRAP_ADMIN_USERNAME=admin \
+            -e KC_BOOTSTRAP_ADMIN_PASSWORD=ci-only-password \
+            quay.io/keycloak/keycloak:26.0 start-dev --import-realm
+
+          for _ in $(seq 1 90); do
+            LOGS=$(docker logs kc-ci 2>&1)
+            if echo "$LOGS" | grep -q "Import finished successfully"; then
+              echo "Realm import succeeded"
+              exit 0
+            fi
+            if echo "$LOGS" | grep -qE "Failed to import|ERROR \[org\.keycloak"; then
+              echo "::error::Keycloak realm import failed"
+              docker logs kc-ci
+              exit 1
+            fi
+            if [ "$(docker inspect -f '{{.State.Running}}' kc-ci)" != "true" ]; then
+              echo "::error::Keycloak container exited before import completed"
+              docker logs kc-ci
+              exit 1
+            fi
+            sleep 2
+          done
+          echo "::error::Timed out waiting for realm import (180s)"
+          docker logs kc-ci
+          exit 1
+
+      - name: Clean up Keycloak container
+        if: always()
+        run: docker rm -f kc-ci 2>/dev/null || true

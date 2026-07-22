@@ -1,12 +1,12 @@
-# Traefik v3 static configuration — VeloBits platform edge proxy.
+﻿# Traefik v3 static configuration â€” VeloBits platform edge proxy.
 #
 # Responsibilities:
 #   1. Accept all *.velobits.dev traffic on :80 (TLS termination at production deploy).
 #   2. Route dev hostnames and paths via the file provider
-#      (rules in gateway/traefik/rules/).
+#      (rules in traefik/rules/).
 #
 # Providers:
-#   - file provider: hostname/path rules in gateway/traefik/rules/
+#   - file provider: hostname/path rules in traefik/rules/
 
 api:
   dashboard: true

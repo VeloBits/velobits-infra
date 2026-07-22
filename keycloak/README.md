@@ -1,6 +1,6 @@
-# Keycloak (VeloBits realms)
+﻿# Keycloak (VeloBits realms)
 
-Identity provider for the FixMyText microbackend. Keycloak is active — the
+Identity provider for the FixMyText microbackend. Keycloak is active â€” the
 `Velobits-Dev` realm handles all auth in the development environment; the
 `Velobits-Prod` realm is imported on the production instance.
 
@@ -9,7 +9,7 @@ Identity provider for the FixMyText microbackend. Keycloak is active — the
 | File | Purpose |
 |---|---|
 | `realm-export-dev.json` | Dev realm definition: `Velobits-Dev`, clients, roles, token lifespans |
-| `realm-export-prod.json` | Prod realm definition: `Velobits-Prod` — imported during production provisioning |
+| `realm-export-prod.json` | Prod realm definition: `Velobits-Prod` â€” imported during production provisioning |
 | `bootstrap.sh` | Idempotent post-boot helper: realm import, SMTP + social IdPs (Google, GitHub), `account-svc` service account (with `manage-users`/`view-users` roles), and backchannel-logout URL registration via Admin API |
 
 ## Realms at a glance
@@ -23,16 +23,16 @@ Identity provider for the FixMyText microbackend. Keycloak is active — the
 - **SSO session**: idle 2 h, max 30 days
 - **Email verification**: required
 - **Self-registration**: allowed (gated by rate-limited `/auth/register` in account-svc)
-- **Brute force protection**: enabled (5 failures → 1-min lockout)
-- **Password policy**: min 8 chars, ≥1 uppercase, ≥1 lowercase, ≥1 digit,
+- **Brute force protection**: enabled (5 failures â†’ 1-min lockout)
+- **Password policy**: min 8 chars, â‰¥1 uppercase, â‰¥1 lowercase, â‰¥1 digit,
   not username, not email, hashed with `pbkdf2-sha256` at 600,000 iterations
 
 ### Prod (`Velobits-Prod`)
 
 Same as Dev except:
-- **Self-registration** via Keycloak's own UI: **disabled** — registration must go through account-svc's `/auth/register` endpoint
+- **Self-registration** via Keycloak's own UI: **disabled** â€” registration must go through account-svc's `/auth/register` endpoint
 - **sslRequired**: `all` (dev uses `external`)
-- **Password policy**: stricter — min 12 chars and also requires ≥1 special character (otherwise same: upper/lower/digit, not username, not email, pbkdf2-sha256 @ 600,000 iterations)
+- **Password policy**: stricter â€” min 12 chars and also requires â‰¥1 special character (otherwise same: upper/lower/digit, not username, not email, pbkdf2-sha256 @ 600,000 iterations)
 - **OTP policy**: TOTP, HmacSHA256, 6 digits, 30 s period (available for users to enable)
 
 ### Clients
@@ -42,12 +42,12 @@ Same as Dev except:
 | `develop-fixmytext` | Dev | Public (PKCE) | Authorization Code | React SPA login/signup |
 | `fixmytext` | Prod | Public (PKCE) | Authorization Code | React SPA (prod) |
 | `fixmytext-backend` | Both | Confidential (service account) | Client credentials | Admin API (user creation, verification email) |
-| `develop-chat` / `chat` | Dev / Prod | Public (PKCE) | — (disabled) | Disabled placeholder for a future VeloBits product (Chat) |
-| `develop-notes` / `notes` | Dev / Prod | Public (PKCE) | — (disabled) | Disabled placeholder for a future VeloBits product (Notes) |
+| `develop-chat` / `chat` | Dev / Prod | Public (PKCE) | â€” (disabled) | Disabled placeholder for a future VeloBits product (Chat) |
+| `develop-notes` / `notes` | Dev / Prod | Public (PKCE) | â€” (disabled) | Disabled placeholder for a future VeloBits product (Notes) |
 
 The `develop-chat`/`develop-notes` (dev) and `chat`/`notes` (prod) clients are
 `enabled: false` placeholders reserved for future VeloBits products. They have no
-active flows yet — standard flow is disabled and they exist only to claim the
+active flows yet â€” standard flow is disabled and they exist only to claim the
 client IDs and redirect URIs ahead of time.
 
 #### `develop-fixmytext` redirect URIs
@@ -91,13 +91,13 @@ products.
 `account-svc` talks to the Keycloak Admin API (user creation, verification email)
 using a dual strategy in `services/account-svc/app/services/keycloak_admin.py`:
 
-1. **Preferred — dedicated service account.** When `KEYCLOAK_SERVICE_ACCOUNT_ID`
+1. **Preferred â€” dedicated service account.** When `KEYCLOAK_SERVICE_ACCOUNT_ID`
    and `KEYCLOAK_SERVICE_ACCOUNT_SECRET` are set, it uses the `client_credentials`
    grant against the **product realm** token endpoint. `bootstrap.sh` provisions
    this client (default clientId `account-svc`, overridable via
    `KEYCLOAK_SERVICE_ACCOUNT_ID`) and assigns it the `manage-users` + `view-users`
    roles from `realm-management`, so no master-realm credentials are needed.
-2. **Fallback — master admin-cli.** When the service account is not configured,
+2. **Fallback â€” master admin-cli.** When the service account is not configured,
    it uses the `password` grant against the **master realm** with
    `KEYCLOAK_ADMIN` / `KEYCLOAK_ADMIN_PASSWORD`.
 
@@ -105,7 +105,7 @@ Admin tokens are cached for their lifetime to avoid hammering the token endpoint
 
 ## Local dev
 
-`docker compose --profile dev up` starts Keycloak with the dev realm
+`docker compose up -d` starts Keycloak with the dev realm
 auto-imported via `--import-realm`. The admin console is at
 http://localhost:8080 (log in with `KEYCLOAK_DEV_ADMIN_PASSWORD` from `.env`).
 

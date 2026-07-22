@@ -1,14 +1,14 @@
-# Traefik — VeloBits Edge Reverse Proxy
+﻿# Traefik â€” VeloBits Edge Reverse Proxy
 
 Traefik is the **edge layer** of the VeloBits platform.
 
 ## Responsibility
 
 ```
-INTERNET → Traefik (subdomain/path rules) → Kong (path → microservice) → Backend services
+INTERNET â†’ Traefik (subdomain/path rules) â†’ Kong (path â†’ microservice) â†’ Backend services
 ```
 
-In local dev, Traefik uses the file provider rules in `gateway/traefik/rules/`
+In local dev, Traefik uses the file provider rules in `traefik/rules/`
 instead of Docker labels. This avoids Docker API-version compatibility issues
 with newer Docker daemons.
 
@@ -39,9 +39,9 @@ EOF
 Then:
 
 ```bash
-docker compose --profile dev up --build
-# Open http://auth-dev.velobits.dev → Keycloak login screen
-# Open http://api-dev.velobits.dev/health → Kong-routed health check
+docker compose up -d
+# Open http://auth-dev.velobits.dev â†’ Keycloak login screen
+# Open http://api-dev.velobits.dev/health â†’ Kong-routed health check
 ```
 
 The Traefik dashboard is at `http://127.0.0.1:8090` (dev-only; localhost-bound for safety).
@@ -49,7 +49,7 @@ The Traefik dashboard is at `http://127.0.0.1:8090` (dev-only; localhost-bound f
 ## Adding a new subdomain route
 
 For a new local-dev route, add a router and service to
-`gateway/traefik/rules/*.yml`:
+`traefik/rules/*.yml`:
 
 ```yaml
 http:

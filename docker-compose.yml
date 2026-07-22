@@ -1,0 +1,192 @@
+# velobits-infra — shared VeloBits platform infrastructure (dev stack).
+#
+# Owns the org-level pieces that sit in front of / beside the product apps:
+#   traefik        edge reverse proxy for all *.velobits.dev subdomains (:80)
+#   keycloak-dev   identity provider (Velobits-Dev realm) + its own Postgres
+#
+# This stack creates the shared `velobits-net` Docker network. Product stacks
+# (e.g. fixmytext-backend) join it as an external network, so:
+#   - Traefik reaches Kong at http://kong:8000 (alias published by the app stack)
+#   - App services reach Keycloak at http://keycloak-dev:8080
+#
+# Start THIS stack first, then the product stack:
+#   docker compose up -d          # here
+#   docker compose --profile dev up --build   # in fixmytext-backend
+#
+# Optional /etc/hosts entries for subdomain routing via Traefik (see README):
+#   127.0.0.1 auth-dev.velobits.dev
+#   127.0.0.1 api-dev.velobits.dev
+#   127.0.0.1 develop-fixmytext.velobits.dev
+
+services:
+
+  # ══════════════════════════════════════════════════════════════════════════
+  # TRAEFIK — edge reverse proxy for all *.velobits.dev subdomains.
+  # Owns external port :80. Dev routes live in traefik/rules/.
+  # ══════════════════════════════════════════════════════════════════════════
+
+  traefik:
+    image: traefik:v3.2
+    container_name: velobits-traefik
+    restart: unless-stopped
+    command:
+      - --api.dashboard=true
+      - --api.insecure=true
+      # File provider avoids Docker API compatibility issues on newer daemons.
+      - --providers.file.directory=/etc/traefik/rules
+      - --providers.file.watch=true
+      - --entrypoints.web.address=:80
+      - --log.level=INFO
+    ports:
+      - "80:80"
+      - "127.0.0.1:8090:8080"   # dashboard, localhost-only
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    volumes:
+      - ./traefik/rules:/etc/traefik/rules:ro
+    networks:
+      - velobits-net
+
+  # ══════════════════════════════════════════════════════════════════════════
+  # KEYCLOAK DEV  —  identity provider for the Velobits-Dev realm.
+  # Dev realm export is at keycloak/realm-export-dev.json.
+  # The prod equivalent is provisioned during production deploy
+  # (docs/keycloak-production-setup.md).
+  # ══════════════════════════════════════════════════════════════════════════
+
+  keycloak-dev-db:
+    image: postgres:16-alpine
+    container_name: keycloak-dev-db
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: keycloak
+      POSTGRES_PASSWORD: ${KEYCLOAK_DEV_DB_PASSWORD:?set KEYCLOAK_DEV_DB_PASSWORD in .env}
+      POSTGRES_DB: keycloak_dev_db
+    volumes:
+      - keycloak-dev-pgdata:/var/lib/postgresql/data
+    networks:
+      - velobits-net
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U keycloak -d keycloak_dev_db"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+
+  keycloak-dev:
+    image: quay.io/keycloak/keycloak:26.0.8
+    container_name: keycloak-dev
+    restart: unless-stopped
+    mem_limit: 1g
+    command: ["start-dev", "--import-realm"]
+    environment:
+      KC_DB: postgres
+      KC_DB_URL: jdbc:postgresql://keycloak-dev-db:5432/keycloak_dev_db
+      KC_DB_USERNAME: keycloak
+      KC_DB_PASSWORD: ${KEYCLOAK_DEV_DB_PASSWORD:?set KEYCLOAK_DEV_DB_PASSWORD in .env}
+      # localhost makes OIDC discovery return http://localhost:8080 URLs, which
+      # the browser can reach via the published port 8080 without /etc/hosts.
+      # Switch to auth-dev.velobits.dev once you add the /etc/hosts entry (see README).
+      KC_HOSTNAME: localhost
+      KC_HOSTNAME_STRICT: "false"
+      KC_HTTP_ENABLED: "true"
+      KC_PROXY_HEADERS: xforwarded
+      KC_HEALTH_ENABLED: "true"
+      KEYCLOAK_ADMIN: ${KEYCLOAK_DEV_ADMIN_USER:-admin}
+      KEYCLOAK_ADMIN_PASSWORD: ${KEYCLOAK_DEV_ADMIN_PASSWORD:?set KEYCLOAK_DEV_ADMIN_PASSWORD in .env}
+    volumes:
+      - ./keycloak/realm-export-dev.json:/opt/keycloak/data/import/realm.json:ro
+      - ./keycloak/themes/fixmytext:/opt/keycloak/themes/fixmytext:ro
+    ports:
+      - "127.0.0.1:8080:8080"
+    depends_on:
+      keycloak-dev-db:
+        condition: service_healthy
+    networks:
+      - velobits-net
+    # KC_HEALTH_ENABLED=true exposes /health/ready on management port 9000.
+    # The KC 26 UBI-micro image omits curl, so we use bash /dev/tcp to hit
+    # the management health endpoint instead.
+    healthcheck:
+      test: ["CMD", "bash", "-c", "exec 3<>/dev/tcp/localhost/9000 && printf 'GET /health/ready HTTP/1.0\\r\\nHost: localhost\\r\\n\\r\\n' >&3 && cat <&3 | grep -q UP"]
+      interval: 10s
+      timeout: 5s
+      retries: 30
+      start_period: 40s
+
+  # ══════════════════════════════════════════════════════════════════════════
+  # KEYCLOAK BOOTSTRAP  —  one-shot init that provisions identity providers
+  # (Google / GitHub) and SMTP on the Velobits-Dev realm via the Admin API.
+  # The realm itself is imported by keycloak-dev (--import-realm); this service
+  # only adds the env-driven config that can't live in the realm JSON. It is
+  # idempotent: bootstrap.sh exits 0 if the realm already exists, and skips each
+  # IdP whose OAuth credentials are blank.
+  #
+  # NOTE: bootstrap.sh requires bash + curl + python3, none of which ship in the
+  # keycloak:26.0 runtime image. We use alpine and `apk add` them (~7s) rather
+  # than maintaining a custom Dockerfile. The script's own 60-attempt wait loop
+  # is kept as a backstop even though depends_on waits for service_healthy.
+  # ══════════════════════════════════════════════════════════════════════════
+
+  keycloak-bootstrap:
+    image: alpine:3
+    container_name: keycloak-bootstrap
+    restart: "no"
+    mem_limit: 128m
+    cpus: "0.25"
+    entrypoint:
+      - /bin/sh
+      - -c
+      - apk add --no-cache bash curl python3 >/dev/null && exec bash /scripts/bootstrap.sh
+    environment:
+      # Internal service address — bootstrap.sh waits on $KEYCLOAK_URL/health/ready.
+      KEYCLOAK_URL: http://keycloak-dev:8080
+      KEYCLOAK_REALM: Velobits-Dev
+      KEYCLOAK_ADMIN: ${KEYCLOAK_DEV_ADMIN_USER:-admin}
+      KEYCLOAK_ADMIN_PASSWORD: ${KEYCLOAK_DEV_ADMIN_PASSWORD:?set KEYCLOAK_DEV_ADMIN_PASSWORD in .env}
+      REALM_EXPORT_PATH: /scripts/realm-export-dev.json
+      # Social login (optional — blank values leave the buttons disabled).
+      GOOGLE_OAUTH_CLIENT_ID: ${GOOGLE_OAUTH_CLIENT_ID:-}
+      GOOGLE_OAUTH_CLIENT_SECRET: ${GOOGLE_OAUTH_CLIENT_SECRET:-}
+      GH_OAUTH_CLIENT_ID: ${GH_OAUTH_CLIENT_ID:-}
+      GH_OAUTH_CLIENT_SECRET: ${GH_OAUTH_CLIENT_SECRET:-}
+      # SMTP (optional — gated on SMTP_HOST + SMTP_USERNAME inside the script).
+      SMTP_HOST: ${SMTP_HOST:-}
+      SMTP_PORT: ${SMTP_PORT:-587}
+      SMTP_USERNAME: ${SMTP_USERNAME:-}
+      SMTP_PASSWORD: ${SMTP_PASSWORD:-}
+      EMAIL_FROM: ${EMAIL_FROM:-}
+      # Dedicated service account for account-svc Admin API calls (optional).
+      # Bootstrap creates/updates the client; account-svc (fixmytext-backend
+      # repo) reads the SAME values — keep the two .env files in sync.
+      KEYCLOAK_SERVICE_ACCOUNT_ID: ${KEYCLOAK_SERVICE_ACCOUNT_ID:-account-svc}
+      KEYCLOAK_SERVICE_ACCOUNT_SECRET: ${KEYCLOAK_SERVICE_ACCOUNT_SECRET:-}
+      # Backchannel logout: URL Keycloak calls on SLO, and the frontend OIDC
+      # client that issued the user sessions (MUST match the public client used
+      # for Authorization Code + PKCE — NOT the service-account client).
+      # `kong` resolves over velobits-net once the fixmytext-backend stack is up.
+      BACKCHANNEL_LOGOUT_URL: ${BACKCHANNEL_LOGOUT_URL:-http://kong:8000/api/v1/auth/backchannel-logout}
+      KEYCLOAK_FRONTEND_CLIENT_ID: ${KEYCLOAK_FRONTEND_CLIENT_ID:-develop-fixmytext}
+    volumes:
+      - ./keycloak/bootstrap.sh:/scripts/bootstrap.sh:ro
+      - ./keycloak/realm-export-dev.json:/scripts/realm-export-dev.json:ro
+    depends_on:
+      keycloak-dev:
+        condition: service_healthy
+    networks:
+      - velobits-net
+
+
+# ── Shared network ────────────────────────────────────────────────────────────
+# Fixed name (not project-prefixed) + attachable so product stacks can join it
+# with `external: true`. This stack owns and creates the network.
+networks:
+  velobits-net:
+    name: velobits-net
+    driver: bridge
+    attachable: true
+
+# ── Volumes ───────────────────────────────────────────────────────────────────
+volumes:
+  # Keycloak's identity database (separate from product DBs by design —
+  # identity and product data are never co-located).
+  keycloak-dev-pgdata:

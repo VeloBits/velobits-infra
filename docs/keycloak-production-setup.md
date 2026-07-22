@@ -1,4 +1,4 @@
-# Keycloak Production Setup Runbook
+﻿# Keycloak Production Setup Runbook
 
 This runbook covers everything required to bring a production Keycloak instance to
 feature-parity with the dev stack: realm import, SMTP, social IdPs, and the
@@ -6,12 +6,12 @@ bootstrap script quirks that burned us in dev.
 
 ---
 
-## Background — What the Dev Stack Does Automatically
+## Background â€” What the Dev Stack Does Automatically
 
-In dev, `docker compose --profile dev up` runs a `keycloak-bootstrap` one-shot container
+In dev, `docker compose up -d` runs a `keycloak-bootstrap` one-shot container
 that calls `bootstrap.sh` after Keycloak is healthy. It handles:
 
-- Realm import (idempotent — skips if realm already exists)
+- Realm import (idempotent â€” skips if realm already exists)
 - SMTP configuration via the Admin API
 - Google and GitHub OAuth IdP provisioning
 - `account-svc` service-account client provisioning (granted `manage-users` +
@@ -30,14 +30,14 @@ bootstrapped manually (or via CI) using the same script.
 |---|---|
 | Production Keycloak URL | e.g. `https://auth.velobits.dev` |
 | Admin credentials | Set during KC initial deployment; store in your secrets manager |
-| Gmail App Password (or transactional email service) | [myaccount.google.com/apppasswords](https://myaccount.google.com/apppasswords) — one app password per environment. **Do not reuse the dev password.** |
-| Google OAuth Client ID + Secret | [console.cloud.google.com](https://console.cloud.google.com) → OAuth 2.0 Clients → add `https://auth.velobits.dev/realms/Velobits-Prod/broker/google/endpoint` as an authorised redirect URI |
-| GitHub OAuth Client ID + Secret | [github.com/settings/developers](https://github.com/settings/developers) → New OAuth App → set callback to `https://auth.velobits.dev/realms/Velobits-Prod/broker/github/endpoint` |
-| `realm-export-prod.json` | `backend/infrastructure/keycloak/realm-export-prod.json` |
+| Gmail App Password (or transactional email service) | [myaccount.google.com/apppasswords](https://myaccount.google.com/apppasswords) â€” one app password per environment. **Do not reuse the dev password.** |
+| Google OAuth Client ID + Secret | [console.cloud.google.com](https://console.cloud.google.com) â†’ OAuth 2.0 Clients â†’ add `https://auth.velobits.dev/realms/Velobits-Prod/broker/google/endpoint` as an authorised redirect URI |
+| GitHub OAuth Client ID + Secret | [github.com/settings/developers](https://github.com/settings/developers) â†’ New OAuth App â†’ set callback to `https://auth.velobits.dev/realms/Velobits-Prod/broker/github/endpoint` |
+| `realm-export-prod.json` | `keycloak/realm-export-prod.json` |
 
 ---
 
-## Step 1 — Import the Production Realm
+## Step 1 â€” Import the Production Realm
 
 If the realm does not exist yet, import it:
 
@@ -46,17 +46,17 @@ export KEYCLOAK_URL=https://auth.velobits.dev
 export KEYCLOAK_ADMIN=admin
 export KEYCLOAK_ADMIN_PASSWORD=<prod-admin-password>
 export KEYCLOAK_REALM=Velobits-Prod
-export REALM_EXPORT_PATH=backend/infrastructure/keycloak/realm-export-prod.json
+export REALM_EXPORT_PATH=keycloak/realm-export-prod.json
 
-bash backend/infrastructure/keycloak/bootstrap.sh
+bash keycloak/bootstrap.sh
 ```
 
-`bootstrap.sh` is idempotent — safe to re-run. If the realm already exists it skips
+`bootstrap.sh` is idempotent â€” safe to re-run. If the realm already exists it skips
 the import and proceeds directly to SMTP + IdP configuration.
 
 ---
 
-## Step 2 — Configure SMTP
+## Step 2 â€” Configure SMTP
 
 Set these additional env vars before running the script (or re-run it with them set):
 
@@ -69,7 +69,7 @@ export EMAIL_FROM="FixMyText <noreply@fixmytext.app>"
 ```
 
 The script PATCHes `smtpServer` on the realm via the Admin API. Verify in the Keycloak
-admin console under **Realm settings → Email**.
+admin console under **Realm settings â†’ Email**.
 
 > **Recommended for production:** Use a transactional email provider (SendGrid, Postmark,
 > AWS SES) instead of a raw Gmail SMTP credential. Gmail has daily send limits and
@@ -77,7 +77,7 @@ admin console under **Realm settings → Email**.
 
 ---
 
-## Step 3 — Configure Social IdPs
+## Step 3 â€” Configure Social IdPs
 
 ```bash
 export GOOGLE_OAUTH_CLIENT_ID=<google-client-id>
@@ -87,11 +87,11 @@ export GH_OAUTH_CLIENT_SECRET=<github-client-secret>
 ```
 
 Run `bootstrap.sh` with all vars set. The script checks for existing IdPs before
-creating them — re-running is safe.
+creating them â€” re-running is safe.
 
 ---
 
-## Step 4 — Provision the account-svc Service Account + Backchannel Logout
+## Step 4 â€” Provision the account-svc Service Account + Backchannel Logout
 
 `account-svc` authenticates to the Admin API with a dedicated service account
 rather than master-realm credentials. Provide its secret and (optionally) the
@@ -113,28 +113,28 @@ and assigns it `manage-users` + `view-users` from `realm-management`. When
 `BACKCHANNEL_LOGOUT_URL` **and** `KEYCLOAK_FRONTEND_CLIENT_ID` are both set, it
 registers the logout URL on that frontend client and disables front-channel logout
 (`frontchannelLogout: false`) so SLO runs server-to-server. The URL must be on the
-PKCE frontend client — not the service-account client, which never holds user sessions.
+PKCE frontend client â€” not the service-account client, which never holds user sessions.
 
 Set the same `KEYCLOAK_SERVICE_ACCOUNT_ID` / `KEYCLOAK_SERVICE_ACCOUNT_SECRET` in
 `account-svc`'s production `.env` so it uses the `client_credentials` grant.
 
 ---
 
-## Step 5 — Verify
+## Step 5 â€” Verify
 
-1. **SMTP**: In the Keycloak admin console → **Realm settings → Email → Test connection**.
+1. **SMTP**: In the Keycloak admin console â†’ **Realm settings â†’ Email â†’ Test connection**.
 2. **Social login**: Open `https://app.fixmytext.app/app/login`, click the Google or
    GitHub button, and complete the OAuth flow.
-3. **Email verification**: Register a new account — the verification email should
+3. **Email verification**: Register a new account â€” the verification email should
    arrive within 30 seconds.
 4. **Password reset**: Click "Forgot Password?" on the login page and confirm the
    reset email arrives.
 
 ---
 
-## Known Bugs Fixed in Dev (already in `bootstrap.sh` — do not revert)
+## Known Bugs Fixed in Dev (already in `bootstrap.sh` â€” do not revert)
 
-### Bug 1 — Health check used wrong endpoint
+### Bug 1 â€” Health check used wrong endpoint
 `bootstrap.sh` originally waited on `$KEYCLOAK_URL/health/ready`. Keycloak 26 with
 `start-dev` does not expose this endpoint at port 8080 without `--health-enabled=true`.
 
@@ -143,7 +143,7 @@ Set the same `KEYCLOAK_SERVICE_ACCOUNT_ID` / `KEYCLOAK_SERVICE_ACCOUNT_SECRET` i
 curl -fsS "$KEYCLOAK_URL/realms/$KEYCLOAK_REALM/.well-known/openid-configuration"
 ```
 
-### Bug 2 — Script exited early if realm already existed
+### Bug 2 â€” Script exited early if realm already existed
 The "realm already exists" branch previously did `exit 0`, which skipped SMTP and
 IdP provisioning entirely. This meant re-running the script on an existing realm never
 configured email or social login.
@@ -160,13 +160,13 @@ To automate this as part of your production deploy pipeline:
 ```yaml
 - name: Bootstrap Keycloak
   run: |
-    bash backend/infrastructure/keycloak/bootstrap.sh
+    bash keycloak/bootstrap.sh
   env:
     KEYCLOAK_URL: ${{ secrets.KC_PROD_URL }}
     KEYCLOAK_ADMIN: ${{ secrets.KC_PROD_ADMIN }}
     KEYCLOAK_ADMIN_PASSWORD: ${{ secrets.KC_PROD_ADMIN_PASSWORD }}
     KEYCLOAK_REALM: Velobits-Prod
-    REALM_EXPORT_PATH: backend/infrastructure/keycloak/realm-export-prod.json
+    REALM_EXPORT_PATH: keycloak/realm-export-prod.json
     SMTP_HOST: ${{ secrets.SMTP_HOST }}
     SMTP_PORT: 587
     SMTP_USERNAME: ${{ secrets.SMTP_USERNAME }}
