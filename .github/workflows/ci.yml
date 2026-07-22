@@ -78,6 +78,7 @@ jobs:
         run: |
           printf '%s\n' \
             'KEYCLOAK_DEV_ADMIN_PASSWORD=ci-stub' \
+            'KEYCLOAK_DEV_DB_USER=ci-stub' \
             'KEYCLOAK_DEV_DB_PASSWORD=ci-stub' > .env
           docker compose config -q
           rm -f .env
