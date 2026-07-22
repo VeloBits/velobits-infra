@@ -42,13 +42,11 @@
       "serviceAccountsEnabled": false,
       "redirectUris": [
         "http://localhost:3000/auth/callback",
-        "http://localhost:3000/app/auth/callback",
-        "http://localhost:3000/app/auth/silent-callback",
-        "http://localhost:3000/app/auth/silent-callback.html",
+        "http://localhost:3000/auth/silent-callback",
+        "http://localhost:3000/auth/silent-callback.html",
         "http://develop-fixmytext.velobits.dev/auth/callback",
-        "http://develop-fixmytext.velobits.dev/app/auth/callback",
-        "http://develop-fixmytext.velobits.dev/app/auth/silent-callback",
-        "http://develop-fixmytext.velobits.dev/app/auth/silent-callback.html"
+        "http://develop-fixmytext.velobits.dev/auth/silent-callback",
+        "http://develop-fixmytext.velobits.dev/auth/silent-callback.html"
       ],
       "webOrigins": [
         "http://develop-fixmytext.velobits.dev",
@@ -57,7 +55,7 @@
       "attributes": {
         "pkce.code.challenge.method": "S256",
         "access.token.lifespan": "300",
-        "post.logout.redirect.uris": "http://localhost:3000/app/##http://develop-fixmytext.velobits.dev/app/##http://localhost:3000/app/login##http://develop-fixmytext.velobits.dev/app/login",
+        "post.logout.redirect.uris": "http://localhost:3000/##http://develop-fixmytext.velobits.dev/##http://localhost:3000/login##http://develop-fixmytext.velobits.dev/login",
         "backchannel.logout.url": "http://account-svc:8000/api/v1/auth/backchannel-logout",
         "backchannel.logout.session.required": "true",
         "backchannel.logout.revoke.offline.tokens": "false"

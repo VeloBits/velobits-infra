@@ -1,6 +1,6 @@
 # Dev Traefik routes for local VeloBits/FixMyText services.
 #
-# Frontend Docker compose publishes the router/content apps on host ports.
+# Frontend Docker compose publishes the nginx router on host port 3000.
 # Backend services live on the same Docker network as Traefik.
 #
 # Higher priority wins when both routers could match.
@@ -24,17 +24,11 @@ http:
       entryPoints:
         - web
 
-    # Content app: static pages, SEO tool pages, share pages, marketing root.
-    fixmytext-dev-content:
-      rule: "Host(`develop-fixmytext.velobits.dev`) && (Path(`/`) || PathPrefix(`/tools`) || PathPrefix(`/about`) || PathPrefix(`/pricing`) || PathPrefix(`/share`))"
-      priority: 20
-      service: fixmytext-dev-content-svc
-      entryPoints:
-        - web
-
-    # Web app: Vite SPA served under /app/*.
+    # Web app: Vite SPA (shell) owns the whole origin, served through the
+    # frontend nginx router on :3000 (which also handles /remotes/*). The
+    # former Next.js content app is no longer routed on this origin.
     fixmytext-dev-web:
-      rule: "Host(`develop-fixmytext.velobits.dev`) && PathPrefix(`/app`)"
+      rule: "Host(`develop-fixmytext.velobits.dev`)"
       priority: 10
       service: fixmytext-dev-web-svc
       entryPoints:
@@ -50,11 +44,6 @@ http:
       loadBalancer:
         servers:
           - url: "http://keycloak-dev:8080"
-
-    fixmytext-dev-content-svc:
-      loadBalancer:
-        servers:
-          - url: "http://host.docker.internal:3103"
 
     fixmytext-dev-web-svc:
       loadBalancer:
