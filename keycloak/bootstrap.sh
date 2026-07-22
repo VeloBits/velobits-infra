@@ -19,6 +19,9 @@
 # Optional env:
 #   KEYCLOAK_REALM               (default: Velobits-Dev)
 #   REALM_EXPORT_PATH            (default: ./realm-export-dev.json relative to this script)
+#   KEYCLOAK_HEALTH_URL          full readiness URL to poll instead of the default
+#                                $KEYCLOAK_URL/realms/master probe (e.g. the KC 26
+#                                management port: http://keycloak:9000/health/ready)
 #   KEYCLOAK_FRONTEND_CLIENT_ID  clientId of the Authorization Code + PKCE client whose
 #                                sessions trigger backchannel logout (NOT the service account)
 #   BACKCHANNEL_LOGOUT_URL       URL Keycloak calls on SLO; registered on the frontend client
@@ -44,11 +47,18 @@ fi
 
 # ── 1. Wait for Keycloak to be reachable ─────────────────────────────────────
 # KC 26 with start-dev does not expose /health/ready at port 8080 unless
-# --health-enabled=true is set. Use the OIDC discovery endpoint instead —
-# it returns 200 only once the realm is fully imported and ready.
-echo "[bootstrap] waiting for Keycloak at $KEYCLOAK_URL ..."
+# --health-enabled=true is set (and even then it lives on the management
+# interface :9000). Probing the TARGET realm's OIDC discovery endpoint would
+# deadlock the fresh-import path — the realm doesn't exist until step 4 of
+# THIS script imports it. Probe the master realm instead: it returns 200
+# exactly when the server is up and serving realms, regardless of whether the
+# target realm has been imported yet. Set KEYCLOAK_HEALTH_URL to a reachable
+# management-port endpoint (e.g. http://keycloak:9000/health/ready) to poll a
+# real health endpoint instead.
+READY_URL="${KEYCLOAK_HEALTH_URL:-$KEYCLOAK_URL/realms/master}"
+echo "[bootstrap] waiting for Keycloak at $READY_URL ..."
 for i in {1..60}; do
-  if curl -fsS "$KEYCLOAK_URL/realms/$KEYCLOAK_REALM/.well-known/openid-configuration" >/dev/null 2>&1; then
+  if curl -fsS "$READY_URL" >/dev/null 2>&1; then
     break
   fi
   if [[ $i -eq 60 ]]; then
