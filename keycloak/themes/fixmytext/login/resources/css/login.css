@@ -10,8 +10,8 @@
   --surface:      #252526;
   --border:       rgba(255, 255, 255, 0.08);
   --border-hover: rgba(255, 255, 255, 0.20);
-  --accent:       #007acc;
-  --accent-hover: #1c8cd9;
+  --accent:       #c8f135;
+  --accent-hover: #93b12a;
   --text:         #d4d4d4;
   --text-2:       #a0a0a0;
   --text-3:       rgba(255, 255, 255, 0.50);
@@ -126,7 +126,7 @@ body.login-pf {
 }
 
 #kc-header-wrapper::before {
-  content: 'FixMyText';
+  content: 'Velobits' !important;
   display: block;
   text-align: center;
   font-size: 1.5rem;
@@ -453,7 +453,7 @@ button[type="submit"] {
   background: var(--accent) !important;
   border: none !important;
   border-radius: var(--r-md) !important;
-  color: #ffffff !important;
+  color: var(--bg) !important;
   font-size: 0.9rem !important;
   font-weight: 600 !important;
   letter-spacing: 0.02em !important;

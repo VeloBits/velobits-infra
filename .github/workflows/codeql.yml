@@ -1,0 +1,36 @@
+name: "CodeQL Analysis"
+
+# This repo is config-only (YAML/JSON/shell), so the only CodeQL-supported
+# language here is `actions` — it scans the GitHub Actions workflows for
+# security issues (untrusted-input injection, excessive permissions, etc.).
+# The job name mirrors fixmytext-backend so the required-check name is the
+# same across VeloBits repos.
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  schedule:
+    - cron: '0 6 * * 1'
+  workflow_dispatch:
+
+jobs:
+  analyze:
+    name: CodeQL Analysis
+    runs-on: ubuntu-latest
+    permissions:
+      security-events: write
+      actions: read
+      contents: read
+    strategy:
+      fail-fast: false
+    steps:
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4.3.1
+      - uses: github/codeql-action/init@9e0d7b8d25671d64c341c19c0152d693099fb5ba # v4
+        with:
+          languages: actions
+          queries: security-extended
+      - uses: github/codeql-action/analyze@9e0d7b8d25671d64c341c19c0152d693099fb5ba # v4.35.5
+        with:
+          category: "/language:actions"
