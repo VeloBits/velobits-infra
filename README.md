@@ -111,3 +111,15 @@ Secrets shared with product stacks (keep the `.env` files in sync):
 4. Realm import gate: boots the pinned Keycloak image with
    `realm-export-dev.json` and asserts the import succeeds (runs only when
    `keycloak/**` changes).
+
+`codeql.yml` scans the Actions workflows (`actions` language) on push/PR and
+weekly. Renovate keeps image tags and action digests updated (renovate.json).
+
+### Branch protection
+
+Import [.github/rulesets/main-branch.json](.github/rulesets/main-branch.json)
+via **Settings → Rules → Rulesets → New ruleset → Import a ruleset**. It
+requires PRs into `main` with the "Traefik & Keycloak Config Validation",
+"Keycloak Realm Import Gate", and "CodeQL Analysis" checks green (the import
+gate reports "skipped" when `keycloak/**` didn't change, which satisfies the
+requirement).
