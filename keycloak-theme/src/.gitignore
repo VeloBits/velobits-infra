@@ -1,11 +1,12 @@
 # This file is managed by Keycloakify, do not edit it manually.
 
 # === Owned files start ===
+# login/i18n.ts
+# login/pages/login-idp-link-confirm/Page.tsx
 # === Owned files end =====
 
 # === @oussemasahbeni/keycloakify-login-shadcn v250004.0.24 ===
 /components/ThemeProvider.tsx
-/login/i18n.ts
 /login/index.css
 /login/KcContext.ts
 /login/KcPage.tsx
@@ -97,7 +98,6 @@
 /login/pages/login-config-totp/Page.tsx
 /login/pages/login-idp-link-confirm/index.ts
 /login/pages/login-idp-link-confirm/Page.stories.tsx
-/login/pages/login-idp-link-confirm/Page.tsx
 /login/pages/login-idp-link-confirm-override/index.ts
 /login/pages/login-idp-link-confirm-override/Page.stories.tsx
 /login/pages/login-idp-link-confirm-override/Page.tsx
