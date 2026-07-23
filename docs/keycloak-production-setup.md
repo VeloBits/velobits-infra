@@ -37,6 +37,23 @@ bootstrapped manually (or via CI) using the same script.
 
 ---
 
+## Step 0 — Deploy the velobits login theme
+
+`Velobits-Prod` pins `loginTheme: velobits`. Before importing the realm,
+place the theme jar in Keycloak's providers directory (the CI `theme-build`
+job publishes it as the `velobits-jar` artifact, or build locally with
+`cd keycloak-theme && npm ci && npm run build-keycloak-theme`):
+
+```bash
+cp velobits.jar /opt/keycloak/providers/
+# then restart Keycloak (or `kc.sh build` first when running --optimized)
+```
+
+Realm import succeeds even without the jar (theme resolution is lazy), but
+every login page will 500 until it is present.
+
+---
+
 ## Step 1 â€” Import the Production Realm
 
 If the realm does not exist yet, import it:

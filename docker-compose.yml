@@ -95,7 +95,14 @@ services:
       KEYCLOAK_ADMIN_PASSWORD: ${KEYCLOAK_DEV_ADMIN_PASSWORD:?set KEYCLOAK_DEV_ADMIN_PASSWORD in .env}
     volumes:
       - ./keycloak/realm-export-dev.json:/opt/keycloak/data/import/realm.json:ro
-      - ./keycloak/themes/fixmytext:/opt/keycloak/themes/fixmytext:ro
+      # Keycloakify "velobits" theme jar — providers/, NOT themes/ (jar-based
+      # themes are Keycloak providers). Build it BEFORE `docker compose up`,
+      # otherwise the login page 500s (realm import itself still succeeds):
+      #   cd keycloak-theme && npm ci && npm run build-keycloak-theme
+      # start-dev picks up providers at startup; rebuild + restart to refresh.
+      # Runtime knobs (SHADCN_THEME_APP_NAME, _LAYOUT, _PRESET, ...) can be set
+      # under environment: to re-brand without rebuilding the jar.
+      - ./keycloak-theme/dist_keycloak:/opt/keycloak/providers:ro
     ports:
       - "127.0.0.1:8080:8080"
     depends_on:

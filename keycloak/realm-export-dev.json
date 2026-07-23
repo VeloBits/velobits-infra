@@ -130,6 +130,6 @@
     }
   ],
   "smtpServer": {},
-  "loginTheme": "fixmytext",
-  "emailTheme": "fixmytext"
+  "loginTheme": "velobits",
+  "emailTheme": "keycloak"
 }

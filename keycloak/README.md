@@ -103,6 +103,27 @@ using a dual strategy in `services/account-svc/app/services/keycloak_admin.py`:
 
 Admin tokens are cached for their lifetime to avoid hammering the token endpoint.
 
+## Login theme (velobits)
+
+Both realms pin `loginTheme: velobits`, a Keycloakify (shadcn/ui + Tailwind)
+theme that lives in [`keycloak-theme/`](../keycloak-theme/) and compiles to
+`velobits.jar`. docker-compose mounts `keycloak-theme/dist_keycloak/` onto
+`/opt/keycloak/providers/` — **build the jar before `docker compose up`**:
+
+```bash
+cd keycloak-theme && npm ci && npm run build-keycloak-theme
+```
+
+`emailTheme` is the stock `keycloak` theme (the legacy fixmytext email theme
+never overrode any template). The legacy FTL theme in `themes/fixmytext/` is
+retired and no longer mounted; delete it once the velobits rollout is
+verified in dev.
+
+Cutover note for an existing dev database: `--import-realm` skips realms
+that already exist, so a pre-cutover DB keeps `loginTheme: fixmytext`.
+Either switch it in the admin console (Realm settings → Themes) or reset
+the dev instance with `docker compose down -v`.
+
 ## Local dev
 
 `docker compose up -d` starts Keycloak with the dev realm

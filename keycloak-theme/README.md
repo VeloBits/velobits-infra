@@ -1,32 +1,67 @@
-# React + TypeScript + Vite
+# velobits Keycloak theme
 
-This template provides a minimal setup to get React working in Vite with HMR and some Oxlint rules.
+Keycloakify v11 login theme for the VeloBits realms, built on
+[@oussemasahbeni/keycloakify-login-shadcn](https://github.com/Oussemasahbeni/keycloakify-shadcn-starter)
+(shadcn/ui + Tailwind v4 + React 19). Compiles to `dist_keycloak/velobits.jar`,
+which docker-compose mounts into `/opt/keycloak/providers/` (jar themes are
+Keycloak providers — NOT the legacy `/opt/keycloak/themes/` directory).
 
-Currently, two official plugins are available:
+## Prerequisites
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
+- Node >= 20
+- JDK + Apache Maven (`keycloakify build` shells out to `mvn` for jar
+  packaging). CI uses temurin-21 + the runner's Maven. On Windows either
+  `choco install openjdk maven`, or use portable installs and put them on
+  PATH for the build shell (a working pair lives in `C:\Users\dev\tools\`:
+  `jdk21\jdk-21.0.11+10` and `apache-maven-3.9.16`).
+- Docker (only for `npx keycloakify start-keycloak`)
 
-## React Compiler
+## Commands
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
-
-## Expanding the Oxlint configuration
-
-If you are developing a production application, we recommend enabling type-aware lint rules by installing `oxlint-tsgolint` and editing `.oxlintrc.json`:
-
-```json
-{
-  "$schema": "./node_modules/oxlint/configuration_schema.json",
-  "plugins": ["react", "typescript", "oxc"],
-  "options": {
-    "typeAware": true
-  },
-  "rules": {
-    "react/rules-of-hooks": "error",
-    "react/only-export-components": ["warn", { "allowConstantExport": true }]
-  }
-}
+```bash
+npm ci                          # also runs `keycloakify sync-extensions` (postinstall)
+npm run storybook               # develop pages against mock kcContext (port 6006)
+npm run build-keycloak-theme    # tsc + vite build + keycloakify build → dist_keycloak/velobits.jar
+npx keycloakify start-keycloak  # throwaway Keycloak 26.0.8 with the theme + dev realm
 ```
 
-See the [Oxlint rules documentation](https://oxc.rs/docs/guide/usage/linter/rules) for the full list of rules and categories.
+## How customization works (sync-extensions ownership)
+
+All theme sources are inherited from the npm extension package: they are
+copied into `src/` by `sync-extensions` but **git-ignored** (see
+`src/.gitignore`). To customize a file, first take ownership:
+
+```bash
+npx keycloakify own --path "login/pages/register/Page.tsx"
+```
+
+The file becomes tracked; edit it freely. `--revert` restores the upstream
+version. Never edit an un-owned file — the next `npm install` overwrites it.
+
+Currently owned (velobits-specific):
+
+- `login/i18n.ts` — en-only string overrides (Sign in / Sign up / Reset
+  password), ported from the legacy fixmytext theme.
+- `login/pages/login-idp-link-confirm/Page.tsx` — drops the "Review profile"
+  button so social logins can only LINK to an existing account
+  (one-identity-per-email invariant).
+
+## Runtime branding (no rebuild)
+
+`SHADCN_THEME_*` env vars on the Keycloak container override the defaults
+baked into the jar (see `environmentVariables` in [vite.config.ts](vite.config.ts)):
+app name, logos, layout (`centered-card` default), color preset/base, radius,
+font. Point logo URLs at files in `public/` via `%BASE_URL%/file.svg`.
+
+## Follow-ups
+
+- Email theme: realms currently use the stock `keycloak` email theme (same
+  as the legacy setup, which never overrode email templates). To restyle,
+  wire [keycloakify-emails](https://github.com/timofei-iatsenko/keycloakify-emails)
+  (jsx-email) into the plugin's `postBuild` — the starter repo has 15
+  reference templates; the email theme lands in the same velobits.jar.
+- Palette: the theme ships the neutral preset. To port the legacy dark
+  VS Code tokens exactly, own `login/index.css` and map them onto the shadcn
+  CSS variables (iterate in Storybook).
+- Supply chain: the extension is a personal-scope npm package — keep the
+  exact-version pin fresh via Renovate and review bumps before merging.
