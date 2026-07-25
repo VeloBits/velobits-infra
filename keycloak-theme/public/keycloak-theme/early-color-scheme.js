@@ -37,9 +37,9 @@
             }
         }
 
-        // Velobits is dark-first: default to dark when nothing is stored
+        // No stored preference: follow the OS color scheme
         // (keep in sync with login/shared/getColorScheme.ts).
-        return true;
+        return matchMedia("(prefers-color-scheme: dark)").matches;
     })();
 
     {

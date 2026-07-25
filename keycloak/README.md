@@ -115,9 +115,9 @@ cd keycloak-theme && npm ci && npm run build-keycloak-theme
 ```
 
 `emailTheme` is the stock `keycloak` theme (the legacy fixmytext email theme
-never overrode any template). The legacy FTL theme in `themes/fixmytext/` is
-retired and no longer mounted; delete it once the velobits rollout is
-verified in dev.
+never overrode any template). The legacy FTL theme (`themes/fixmytext/`) was
+removed after the velobits rollout was verified in dev — it lives on in git
+history if ever needed.
 
 Cutover note for an existing dev database: `--import-realm` skips realms
 that already exist, so a pre-cutover DB keeps `loginTheme: fixmytext`.

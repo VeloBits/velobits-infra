@@ -22,8 +22,14 @@ export default defineConfig({
             // Runtime knobs readable at kcContext.properties — overridable per
             // deployment via `environment:` on the keycloak service, no rebuild.
             environmentVariables: [
-                { name: "SHADCN_THEME_LOGO_WHITE_URL", default: "" },
-                { name: "SHADCN_THEME_LOGO_DARK_URL", default: "" },
+                {
+                    name: "SHADCN_THEME_LOGO_WHITE_URL",
+                    default: "%BASE_URL%/assets/velobits-color-png.png"
+                },
+                {
+                    name: "SHADCN_THEME_LOGO_DARK_URL",
+                    default: "%BASE_URL%/assets/velobits-color-png.png"
+                },
                 { name: "SHADCN_THEME_APP_NAME", default: "Velobits" },
                 { name: "SHADCN_THEME_LAYOUT", default: "centered-card" },
                 { name: "SHADCN_THEME_SIDE_IMAGE_URL", default: "" },

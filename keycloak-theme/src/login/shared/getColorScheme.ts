@@ -48,7 +48,7 @@ export function getTheme(
         return value === "true" ? "dark" : "light";
     }
 
-    // Velobits is dark-first: with no admin policy, URL param, or stored
-    // preference, default to dark instead of following the OS scheme.
-    return "dark";
+    // No stored/param preference: follow the OS color scheme. The in-page
+    // ModeToggle is removed (TemplateTopBar), so this is the effective default.
+    return "system";
 }

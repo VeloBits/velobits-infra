@@ -4,6 +4,8 @@
 # login/i18n.ts
 # components/ui/button.tsx
 # login/shared/getColorScheme.ts
+# login/components/Template/TemplateContent.tsx
+# login/components/Template/TemplateTopBar.tsx
 # login/pages/login-idp-link-confirm/Page.tsx
 # login/components/Template/theme/Themes.ts
 # login/components/Template/theme/ThemeTypes.ts
@@ -43,8 +45,6 @@
 /login/components/Template/Defaults.ts
 /login/components/Template/index.ts
 /login/components/Template/Template.tsx
-/login/components/Template/TemplateContent.tsx
-/login/components/Template/TemplateTopBar.tsx
 /login/components/Template/useAuthChecker.ts
 /login/components/Template/useInitializeTemplate.ts
 /login/components/ui/Langauges.tsx
