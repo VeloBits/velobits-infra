@@ -2,7 +2,7 @@
 #
 # Owns the org-level pieces that sit in front of / beside the product apps:
 #   traefik        edge reverse proxy for all *.velobits.dev subdomains (:80)
-#   keycloak-dev   identity provider (Velobits-Dev realm) + its own Postgres
+#   keycloak-dev   identity provider (Velobits realm) + its own Postgres
 #
 # This stack creates the shared `velobits-net` Docker network. Product stacks
 # (e.g. fixmytext-backend) join it as an external network, so:
@@ -48,7 +48,7 @@ services:
       - velobits-net
 
   # ══════════════════════════════════════════════════════════════════════════
-  # KEYCLOAK DEV  —  identity provider for the Velobits-Dev realm.
+  # KEYCLOAK DEV  —  identity provider for the Velobits realm.
   # Dev realm export is at keycloak/realm-export-dev.json.
   # The prod equivalent is provisioned during production deploy
   # (docs/keycloak-production-setup.md).
@@ -122,7 +122,7 @@ services:
 
   # ══════════════════════════════════════════════════════════════════════════
   # KEYCLOAK BOOTSTRAP  —  one-shot init that provisions identity providers
-  # (Google / GitHub) and SMTP on the Velobits-Dev realm via the Admin API.
+  # (Google / GitHub) and SMTP on the Velobits realm via the Admin API.
   # The realm itself is imported by keycloak-dev (--import-realm); this service
   # only adds the env-driven config that can't live in the realm JSON. It is
   # idempotent: bootstrap.sh exits 0 if the realm already exists, and skips each
@@ -147,7 +147,7 @@ services:
     environment:
       # Internal service address — bootstrap.sh waits on $KEYCLOAK_URL/health/ready.
       KEYCLOAK_URL: http://keycloak-dev:8080
-      KEYCLOAK_REALM: Velobits-Dev
+      KEYCLOAK_REALM: Velobits
       KEYCLOAK_ADMIN: ${KEYCLOAK_DEV_ADMIN_USER:-admin}
       KEYCLOAK_ADMIN_PASSWORD: ${KEYCLOAK_DEV_ADMIN_PASSWORD:?set KEYCLOAK_DEV_ADMIN_PASSWORD in .env}
       REALM_EXPORT_PATH: /scripts/realm-export-dev.json
@@ -172,7 +172,7 @@ services:
       # for Authorization Code + PKCE — NOT the service-account client).
       # `kong` resolves over velobits-net once the fixmytext-backend stack is up.
       BACKCHANNEL_LOGOUT_URL: ${BACKCHANNEL_LOGOUT_URL:-http://kong:8000/api/v1/auth/backchannel-logout}
-      KEYCLOAK_FRONTEND_CLIENT_ID: ${KEYCLOAK_FRONTEND_CLIENT_ID:-develop-fixmytext}
+      KEYCLOAK_FRONTEND_CLIENT_ID: ${KEYCLOAK_FRONTEND_CLIENT_ID:-local-velobits}
     volumes:
       - ./keycloak/bootstrap.sh:/scripts/bootstrap.sh:ro
       - ./keycloak/realm-export-dev.json:/scripts/realm-export-dev.json:ro

@@ -1,5 +1,5 @@
 {
-  "realm": "Velobits-Dev",
+  "realm": "Velobits",
   "enabled": true,
   "sslRequired": "external",
   "accessTokenLifespan": 300,
@@ -33,8 +33,8 @@
   ],
   "clients": [
     {
-      "clientId": "develop-fixmytext",
-      "name": "FixMyText Dev (public, PKCE)",
+      "clientId": "local-velobits",
+      "name": "FixMyText",
       "enabled": true,
       "publicClient": true,
       "standardFlowEnabled": true,
@@ -93,43 +93,11 @@
       "attributes": {
         "access.token.lifespan": "300"
       }
-    },
-    {
-      "clientId": "develop-chat",
-      "name": "Chat Dev (placeholder for future Velobits product)",
-      "enabled": false,
-      "publicClient": true,
-      "standardFlowEnabled": false,
-      "directAccessGrantsEnabled": false,
-      "redirectUris": [
-        "http://develop-chat.velobits.dev/auth/callback"
-      ],
-      "webOrigins": [
-        "http://develop-chat.velobits.dev"
-      ],
-      "attributes": {
-        "pkce.code.challenge.method": "S256"
-      }
-    },
-    {
-      "clientId": "develop-notes",
-      "name": "Notes Dev (placeholder for future Velobits product)",
-      "enabled": false,
-      "publicClient": true,
-      "standardFlowEnabled": false,
-      "directAccessGrantsEnabled": false,
-      "redirectUris": [
-        "http://develop-notes.velobits.dev/auth/callback"
-      ],
-      "webOrigins": [
-        "http://develop-notes.velobits.dev"
-      ],
-      "attributes": {
-        "pkce.code.challenge.method": "S256"
-      }
     }
   ],
   "smtpServer": {},
   "loginTheme": "velobits",
-  "emailTheme": "keycloak"
+  "accountTheme": "velobits",
+  "emailTheme": "keycloak",
+  "adminTheme": "velobits"
 }

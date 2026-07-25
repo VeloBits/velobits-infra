@@ -114,8 +114,8 @@ export function TemplateContent(props: TemplateContentProps) {
                             className="size-14 hidden dark:inline-block"
                         />
                         {/* Brand name, not the realm identifier — realm names
-                            are per-environment (Velobits-Dev / Velobits-Prod)
-                            while the wordmark stays "Velobits". */}
+                            vary per environment (Velobits / Velobits-Prod)
+                            while the wordmark is always "Velobits". */}
                         <span className="text-xl">
                             {kcContext.properties.SHADCN_THEME_APP_NAME ||
                                 realm.displayName ||
