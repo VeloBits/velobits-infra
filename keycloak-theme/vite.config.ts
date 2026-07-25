@@ -27,10 +27,10 @@ export default defineConfig({
                 { name: "SHADCN_THEME_APP_NAME", default: "Velobits" },
                 { name: "SHADCN_THEME_LAYOUT", default: "centered-card" },
                 { name: "SHADCN_THEME_SIDE_IMAGE_URL", default: "" },
-                { name: "SHADCN_THEME_PRESET", default: "neutral" },
-                { name: "SHADCN_THEME_BASE", default: "neutral" },
-                { name: "SHADCN_THEME_RADIUS", default: "default" },
-                { name: "SHADCN_THEME_FONT", default: "geist" },
+                { name: "SHADCN_THEME_PRESET", default: "velobits" },
+                { name: "SHADCN_THEME_BASE", default: "velobits" },
+                { name: "SHADCN_THEME_RADIUS", default: "large" },
+                { name: "SHADCN_THEME_FONT", default: "manrope" },
                 { name: "SHADCN_THEME_PLACEHOLDER", default: "true" }
             ],
             startKeycloakOptions: {

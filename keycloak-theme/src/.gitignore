@@ -2,7 +2,11 @@
 
 # === Owned files start ===
 # login/i18n.ts
+# components/ui/button.tsx
+# login/shared/getColorScheme.ts
 # login/pages/login-idp-link-confirm/Page.tsx
+# login/components/Template/theme/Themes.ts
+# login/components/Template/theme/ThemeTypes.ts
 # === Owned files end =====
 
 # === @oussemasahbeni/keycloakify-login-shadcn v250004.0.24 ===
@@ -13,7 +17,6 @@
 /login/styleLevelCustomization.tsx
 /components/lib/utils.ts
 /components/ui/alert.tsx
-/components/ui/button.tsx
 /components/ui/card.tsx
 /components/ui/checkbox.tsx
 /components/ui/dropdown-menu.tsx
@@ -32,7 +35,6 @@
 /login/mocks/getKcContextMock.ts
 /login/mocks/KcPageStory.tsx
 /login/pages/PageIndex.tsx
-/login/shared/getColorScheme.ts
 /login/shared/redirectUrlOrigin.ts
 /login/shared/resolveAssetUrl.ts
 /login/assets/img/default-logo.svg
@@ -188,8 +190,6 @@
 /login/components/Template/layouts/CenteredCardLayout.tsx
 /login/components/Template/layouts/ImageAsideLayout.tsx
 /login/components/Template/layouts/TwoColumnLayout.tsx
-/login/components/Template/theme/Themes.ts
-/login/components/Template/theme/ThemeTypes.ts
 /login/components/Template/theme/ThemeUtils.ts
 /login/components/Template/theme/useApplyThemePreset.ts
 /login/pages/login/providers/apple.svg

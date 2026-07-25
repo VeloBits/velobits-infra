@@ -65,7 +65,7 @@ const preview: Preview = {
         layout: {
             name: "Layout",
             description: "Keycloak layout",
-            defaultValue: "two-column",
+            defaultValue: "centered-card",
             toolbar: {
                 icon: "mirror",
                 items: ["two-column", "centered-card", "image-aside"]
@@ -114,7 +114,7 @@ const preview: Preview = {
         themePreset: {
             name: "Theme",
             description: "Keycloak theme preset",
-            defaultValue: "neutral",
+            defaultValue: "velobits",
             toolbar: {
                 icon: "paintbrush",
                 items: [...themePresetOptions]
@@ -123,7 +123,7 @@ const preview: Preview = {
         themeBase: {
             name: "Base",
             description: "Keycloak base palette",
-            defaultValue: "neutral",
+            defaultValue: "velobits",
             toolbar: {
                 icon: "contrast",
                 items: [...basePaletteOptions]
@@ -132,7 +132,7 @@ const preview: Preview = {
         themeRadius: {
             name: "Radius",
             description: "Keycloak radius preset",
-            defaultValue: "default",
+            defaultValue: "large",
             toolbar: {
                 icon: "circlehollow",
                 items: [...radiusPresetOptions]
@@ -141,7 +141,7 @@ const preview: Preview = {
         themeFont: {
             name: "Font",
             description: "Theme font preset",
-            defaultValue: "geist",
+            defaultValue: "manrope",
             toolbar: {
                 icon: "paragraph",
                 items: [
