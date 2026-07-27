@@ -94,6 +94,7 @@ jobs:
       pull-requests: read
     outputs:
       keycloak: ${{ steps.filter.outputs.keycloak }}
+      theme: ${{ steps.filter.outputs.theme }}
     steps:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
 
@@ -104,20 +105,76 @@ jobs:
           filters: |
             keycloak:
               - 'keycloak/**'
+            theme:
+              - 'keycloak-theme/**'
+
+  theme-build:
+    name: Build velobits Keycloak theme
+    runs-on: ubuntu-latest
+    needs: [changes]
+    # Builds when the theme OR keycloak files change (the import gate mounts
+    # the jar, and the realm exports reference the velobits theme), or on
+    # manual dispatch. !cancelled() keeps it eligible when `changes` is
+    # skipped (workflow_dispatch).
+    if: >-
+      !cancelled() && (
+        needs.changes.outputs.keycloak == 'true' ||
+        needs.changes.outputs.theme == 'true' ||
+        github.event_name == 'workflow_dispatch'
+      )
+    defaults:
+      run:
+        working-directory: keycloak-theme
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: keycloak-theme/package-lock.json
+
+      # keycloakify build shells out to Maven for jar packaging; Maven ships
+      # preinstalled on ubuntu-latest, it only needs a JDK.
+      - uses: actions/setup-java@03ad4de0992f5dab5e18fcb136590ce7c4a0ac95 # v5.6.0
+        with:
+          distribution: temurin
+          java-version: "21"
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build theme jar (vite + tsc + keycloakify)
+        run: npm run build-keycloak-theme
+
+      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: velobits-jar
+          path: keycloak-theme/dist_keycloak/velobits.jar
+          if-no-files-found: error
 
   keycloak-import:
     name: Keycloak Realm Import Gate
     runs-on: ubuntu-latest
-    needs: [changes]
-    # Runs when keycloak/** changed, or on manual dispatch. !cancelled() keeps
-    # it eligible when `changes` is skipped (workflow_dispatch).
+    needs: [changes, theme-build]
+    # Runs when keycloak/** or keycloak-theme/** changed, or on manual
+    # dispatch. Requires the theme jar because the realm exports pin
+    # loginTheme=velobits. !cancelled() keeps it eligible when `changes` is
+    # skipped (workflow_dispatch).
     if: >-
-      !cancelled() && (
+      !cancelled() &&
+      needs.theme-build.result == 'success' && (
         needs.changes.outputs.keycloak == 'true' ||
+        needs.changes.outputs.theme == 'true' ||
         github.event_name == 'workflow_dispatch'
       )
     steps:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+
+      - uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        with:
+          name: velobits-jar
+          path: keycloak-theme/dist_keycloak
 
       - name: Boot Keycloak and import dev realm
         # Verifies realm-export-dev.json actually imports on the pinned image.
@@ -126,15 +183,19 @@ jobs:
         run: |
           docker run -d --name kc-ci \
             -v "$PWD/keycloak/realm-export-dev.json:/opt/keycloak/data/import/realm.json:ro" \
+            -v "$PWD/keycloak-theme/dist_keycloak:/opt/keycloak/providers:ro" \
+            -p 127.0.0.1:18080:8080 \
             -e KC_BOOTSTRAP_ADMIN_USERNAME=admin \
             -e KC_BOOTSTRAP_ADMIN_PASSWORD=ci-only-password \
             quay.io/keycloak/keycloak:26.0 start-dev --import-realm
 
+          IMPORTED=0
           for _ in $(seq 1 90); do
             LOGS=$(docker logs kc-ci 2>&1)
             if echo "$LOGS" | grep -q "Import finished successfully"; then
               echo "Realm import succeeded"
-              exit 0
+              IMPORTED=1
+              break
             fi
             if echo "$LOGS" | grep -qE "Failed to import|ERROR \[org\.keycloak"; then
               echo "::error::Keycloak realm import failed"
@@ -148,9 +209,31 @@ jobs:
             fi
             sleep 2
           done
-          echo "::error::Timed out waiting for realm import (180s)"
-          docker logs kc-ci
-          exit 1
+          if [ "$IMPORTED" != "1" ]; then
+            echo "::error::Timed out waiting for realm import (180s)"
+            docker logs kc-ci
+            exit 1
+          fi
+
+          # Realm import succeeds even if the referenced theme is missing
+          # (theme resolution is lazy) — so also assert the login page really
+          # renders velobits. The local-velobits client enforces PKCE
+          # (S256): without code_challenge Keycloak redirects the error to
+          # redirect_uri instead of rendering the themed login page.
+          AUTH_URL="http://127.0.0.1:18080/realms/Velobits/protocol/openid-connect/auth?client_id=local-velobits&redirect_uri=http%3A%2F%2Flocalhost%3A3000%2Fauth%2Fcallback&response_type=code&scope=openid&code_challenge=E9Melhoa2OwvFrEMTJguCHaoeK1t8URWbuGJSstw-cM&code_challenge_method=S256"
+          HTML=""
+          for _ in $(seq 1 15); do
+            HTML=$(curl -fsS "$AUTH_URL" || true)
+            [ -n "$HTML" ] && break
+            sleep 2
+          done
+          if ! echo "$HTML" | grep -q "login/velobits"; then
+            echo "::error::Login page did not render the velobits theme"
+            echo "$HTML" | head -c 2000
+            docker logs kc-ci | tail -50
+            exit 1
+          fi
+          echo "velobits theme rendered on the login page"
 
       - name: Clean up Keycloak container
         if: always()
