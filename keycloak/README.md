@@ -1,24 +1,24 @@
 ﻿# Keycloak (VeloBits realms)
 
 Identity provider for the FixMyText microbackend. Keycloak is active â€” the
-`Velobits-Dev` realm handles all auth in the development environment; the
+`Velobits` realm handles all auth in the development environment; the
 `Velobits-Prod` realm is imported on the production instance.
 
 ## Files
 
 | File | Purpose |
 |---|---|
-| `realm-export-dev.json` | Dev realm definition: `Velobits-Dev`, clients, roles, token lifespans |
+| `realm-export-dev.json` | Dev realm definition: `Velobits`, clients, roles, token lifespans |
 | `realm-export-prod.json` | Prod realm definition: `Velobits-Prod` â€” imported during production provisioning |
 | `bootstrap.sh` | Idempotent post-boot helper: realm import, SMTP + social IdPs (Google, GitHub), `account-svc` service account (with `manage-users`/`view-users` roles), and backchannel-logout URL registration via Admin API |
 
 ## Realms at a glance
 
-### Dev (`Velobits-Dev`)
+### Dev (`Velobits`)
 
 - **Default signature algorithm**: `RS256`
-- **JWKS URL**: `http://localhost:8080/realms/Velobits-Dev/protocol/openid-connect/certs`
-- **OIDC discovery**: `http://localhost:8080/realms/Velobits-Dev/.well-known/openid-configuration`
+- **JWKS URL**: `http://localhost:8080/realms/Velobits/protocol/openid-connect/certs`
+- **OIDC discovery**: `http://localhost:8080/realms/Velobits/.well-known/openid-configuration`
 - **Access token lifespan**: 300 s (5 min)
 - **SSO session**: idle 2 h, max 30 days
 - **Email verification**: required
@@ -39,7 +39,7 @@ Same as Dev except:
 
 | Client | Realm | Type | Flow | Used by |
 |---|---|---|---|---|
-| `develop-fixmytext` | Dev | Public (PKCE) | Authorization Code | React SPA login/signup |
+| `local-velobits` | Dev | Public (PKCE) | Authorization Code | React SPA login/signup |
 | `fixmytext` | Prod | Public (PKCE) | Authorization Code | React SPA (prod) |
 | `fixmytext-backend` | Both | Confidential (service account) | Client credentials | Admin API (user creation, verification email) |
 | `develop-chat` / `chat` | Dev / Prod | Public (PKCE) | â€” (disabled) | Disabled placeholder for a future VeloBits product (Chat) |
@@ -50,7 +50,7 @@ The `develop-chat`/`develop-notes` (dev) and `chat`/`notes` (prod) clients are
 active flows yet â€” standard flow is disabled and they exist only to claim the
 client IDs and redirect URIs ahead of time.
 
-#### `develop-fixmytext` redirect URIs
+#### `local-velobits` redirect URIs
 
 The dev frontend client registers both the Vite (`/auth/callback`) and Next.js
 (`/app/auth/callback`) callback paths plus the silent-renew callback, on both the
@@ -65,7 +65,7 @@ localhost and `velobits.dev` hosts:
 
 #### Front-channel logout disabled
 
-`develop-fixmytext` sets `frontchannelLogout: false`. Keycloak performs single
+`local-velobits` sets `frontchannelLogout: false`. Keycloak performs single
 logout via **back-channel SLO** (server-to-server POST to the
 `backchannel.logout.url`, `http://account-svc:8000/api/v1/auth/backchannel-logout`
 in dev). Front-channel logout is disabled because server-initiated logouts
@@ -102,6 +102,27 @@ using a dual strategy in `services/account-svc/app/services/keycloak_admin.py`:
    `KEYCLOAK_ADMIN` / `KEYCLOAK_ADMIN_PASSWORD`.
 
 Admin tokens are cached for their lifetime to avoid hammering the token endpoint.
+
+## Login theme (velobits)
+
+Both realms pin `loginTheme: velobits`, a Keycloakify (shadcn/ui + Tailwind)
+theme that lives in [`keycloak-theme/`](../keycloak-theme/) and compiles to
+`velobits.jar`. docker-compose mounts `keycloak-theme/dist_keycloak/` onto
+`/opt/keycloak/providers/` — **build the jar before `docker compose up`**:
+
+```bash
+cd keycloak-theme && npm ci && npm run build-keycloak-theme
+```
+
+`emailTheme` is the stock `keycloak` theme (the legacy fixmytext email theme
+never overrode any template). The legacy FTL theme (`themes/fixmytext/`) was
+removed after the velobits rollout was verified in dev — it lives on in git
+history if ever needed.
+
+Cutover note for an existing dev database: `--import-realm` skips realms
+that already exist, so a pre-cutover DB keeps `loginTheme: fixmytext`.
+Either switch it in the admin console (Realm settings → Themes) or reset
+the dev instance with `docker compose down -v`.
 
 ## Local dev
 

@@ -21,7 +21,7 @@ INTERNET → Traefik (subdomain rules) → product gateways (Kong) → backend s
 ```
 
 This repo owns everything **org-level**: the `*.velobits.dev` edge and the
-shared identity realms (`Velobits-Dev` / `Velobits-Prod`). Product-level
+shared identity realms (`Velobits` / `Velobits-Prod`). Product-level
 gateway config (Kong routes, per-endpoint rate limits) stays in each product
 repo — for FixMyText that is `fixmytext-backend/gateway/kong/`.
 
@@ -37,7 +37,7 @@ Brings up:
 | Service | Address | Purpose |
 |---|---|---|
 | `traefik` | `:80` (all interfaces), dashboard `127.0.0.1:8090` | Edge routing for `*.velobits.dev` |
-| `keycloak-dev` | `127.0.0.1:8080` | Velobits-Dev realm (auto-imported) |
+| `keycloak-dev` | `127.0.0.1:8080` | Velobits realm (auto-imported) |
 | `keycloak-dev-db` | internal only | Keycloak's own Postgres 16 |
 | `keycloak-bootstrap` | one-shot | Provisions IdPs / SMTP / service account via Admin API |
 

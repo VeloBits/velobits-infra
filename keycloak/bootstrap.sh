@@ -17,7 +17,7 @@
 #   KEYCLOAK_ADMIN_PASSWORD (required)
 #
 # Optional env:
-#   KEYCLOAK_REALM               (default: Velobits-Dev)
+#   KEYCLOAK_REALM               (default: Velobits)
 #   REALM_EXPORT_PATH            (default: ./realm-export-dev.json relative to this script)
 #   KEYCLOAK_HEALTH_URL          full readiness URL to poll instead of the default
 #                                $KEYCLOAK_URL/realms/master probe (e.g. the KC 26
@@ -37,7 +37,7 @@ set -euo pipefail
 
 KEYCLOAK_URL="${KEYCLOAK_URL:-http://localhost:8080}"
 KEYCLOAK_ADMIN="${KEYCLOAK_ADMIN:-admin}"
-KEYCLOAK_REALM="${KEYCLOAK_REALM:-Velobits-Dev}"
+KEYCLOAK_REALM="${KEYCLOAK_REALM:-Velobits}"
 REALM_EXPORT_PATH="${REALM_EXPORT_PATH:-$(dirname "$0")/realm-export-dev.json}"
 
 if [[ -z "${KEYCLOAK_ADMIN_PASSWORD:-}" ]]; then
