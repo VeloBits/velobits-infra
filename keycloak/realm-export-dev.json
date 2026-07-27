@@ -33,6 +33,52 @@
   ],
   "clients": [
     {
+      "clientId": "toggleflow-dashboard",
+      "name": "ToggleFlow Dashboard (public, PKCE)",
+      "description": "ToggleFlow control-plane dashboard SPA. directAccessGrants stays enabled in DEV ONLY for curl/API smoke tests; disable in prod.",
+      "enabled": true,
+      "protocol": "openid-connect",
+      "publicClient": true,
+      "standardFlowEnabled": true,
+      "directAccessGrantsEnabled": true,
+      "serviceAccountsEnabled": false,
+      "redirectUris": ["http://localhost:5173/*"],
+      "webOrigins": ["http://localhost:5173"],
+      "attributes": {
+        "pkce.code.challenge.method": "S256",
+        "access.token.lifespan": "300",
+        "post.logout.redirect.uris": "http://localhost:5173/##http://localhost:5173/login"
+      },
+      "protocolMappers": [
+        {
+          "name": "toggleflow-api-audience",
+          "protocol": "openid-connect",
+          "protocolMapper": "oidc-audience-mapper",
+          "consentRequired": false,
+          "config": {
+            "included.client.audience": "toggleflow-api",
+            "id.token.claim": "false",
+            "access.token.claim": "true"
+          }
+        }
+      ]
+    },
+    {
+      "clientId": "toggleflow-api",
+      "name": "ToggleFlow Control-Plane API",
+      "description": "Bearer audience for the ToggleFlow control-plane API — never issues tokens itself.",
+      "enabled": true,
+      "protocol": "openid-connect",
+      "publicClient": false,
+      "standardFlowEnabled": false,
+      "directAccessGrantsEnabled": false,
+      "serviceAccountsEnabled": false,
+      "redirectUris": [],
+      "attributes": {
+        "access.token.lifespan": "300"
+      }
+    },
+    {
       "clientId": "develop-fixmytext",
       "name": "FixMyText Dev (public, PKCE)",
       "enabled": true,
