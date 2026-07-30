@@ -1,7 +1,7 @@
 name: "CodeQL Analysis"
 
 # This repo is config-only (YAML/JSON/shell), so the only CodeQL-supported
-# language here is `actions` — it scans the GitHub Actions workflows for
+# language here is `actions` - it scans the GitHub Actions workflows for
 # security issues (untrusted-input injection, excessive permissions, etc.).
 # The job name mirrors fixmytext-backend so the required-check name is the
 # same across VeloBits repos.

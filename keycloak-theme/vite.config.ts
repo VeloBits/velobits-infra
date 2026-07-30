@@ -19,7 +19,7 @@ export default defineConfig({
                 "22-to-25": false,
                 "all-other-versions": "velobits.jar"
             },
-            // Runtime knobs readable at kcContext.properties — overridable per
+            // Runtime knobs readable at kcContext.properties - overridable per
             // deployment via `environment:` on the keycloak service, no rebuild.
             environmentVariables: [
                 {
