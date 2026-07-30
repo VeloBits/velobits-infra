@@ -19,7 +19,7 @@ jobs:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
 
       - name: Validate Traefik dynamic rules
-        # Boot success is NOT the gate — Traefik boots cleanly with broken
+        # Boot success is NOT the gate - Traefik boots cleanly with broken
         # rules and just disables the affected router. Assert via the API that
         # every file-provider router actually loaded as "enabled".
         run: |
@@ -48,7 +48,7 @@ jobs:
 
           # Guard against a vacuous pass (wrong mount path => zero routers).
           if [ "$(echo "$FILE_ROUTERS" | jq 'length')" -lt 2 ]; then
-            echo "::error::Expected at least 2 file-provider routers, got fewer — rules did not load"
+            echo "::error::Expected at least 2 file-provider routers, got fewer - rules did not load"
             echo "$ROUTERS" | jq .
             docker logs traefik-ci
             exit 1
@@ -179,7 +179,7 @@ jobs:
       - name: Boot Keycloak and import dev realm
         # Verifies realm-export-dev.json actually imports on the pinned image.
         # Note: /health/* lives on the management port :9000 in KC 26, and the
-        # image has no curl — poll the container logs instead.
+        # image has no curl - poll the container logs instead.
         run: |
           docker run -d --name kc-ci \
             -v "$PWD/keycloak/realm-export-dev.json:/opt/keycloak/data/import/realm.json:ro" \
@@ -216,7 +216,7 @@ jobs:
           fi
 
           # Realm import succeeds even if the referenced theme is missing
-          # (theme resolution is lazy) — so also assert the login page really
+          # (theme resolution is lazy) - so also assert the login page really
           # renders velobits. The local-velobits client enforces PKCE
           # (S256): without code_challenge Keycloak redirects the error to
           # redirect_uri instead of rendering the themed login page.

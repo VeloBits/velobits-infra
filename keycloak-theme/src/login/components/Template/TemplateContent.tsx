@@ -113,7 +113,7 @@ export function TemplateContent(props: TemplateContentProps) {
                             src={logoDarkUrl}
                             className="size-14 hidden dark:inline-block"
                         />
-                        {/* Brand name, not the realm identifier — realm names
+                        {/* Brand name, not the realm identifier - realm names
                             vary per environment (Velobits / Velobits-Prod)
                             while the wordmark is always "Velobits". */}
                         <span className="text-xl">
