@@ -1,4 +1,4 @@
-# velobits-infra — shared VeloBits platform infrastructure (dev stack).
+# velobits-infra - shared VeloBits platform infrastructure (dev stack).
 #
 # Owns the org-level pieces that sit in front of / beside the product apps:
 #   traefik        edge reverse proxy for all *.velobits.dev subdomains (:80)
@@ -21,7 +21,7 @@
 services:
 
   # ══════════════════════════════════════════════════════════════════════════
-  # TRAEFIK — edge reverse proxy for all *.velobits.dev subdomains.
+  # TRAEFIK - edge reverse proxy for all *.velobits.dev subdomains.
   # Owns external port :80. Dev routes live in traefik/rules/.
   # ══════════════════════════════════════════════════════════════════════════
 
@@ -48,7 +48,7 @@ services:
       - velobits-net
 
   # ══════════════════════════════════════════════════════════════════════════
-  # KEYCLOAK DEV  —  identity provider for the Velobits realm.
+  # KEYCLOAK DEV  -  identity provider for the Velobits realm.
   # Dev realm export is at keycloak/realm-export-dev.json.
   # The prod equivalent is provisioned during production deploy
   # (docs/keycloak-production-setup.md).
@@ -95,7 +95,7 @@ services:
       KEYCLOAK_ADMIN_PASSWORD: ${KEYCLOAK_DEV_ADMIN_PASSWORD:?set KEYCLOAK_DEV_ADMIN_PASSWORD in .env}
     volumes:
       - ./keycloak/realm-export-dev.json:/opt/keycloak/data/import/realm.json:ro
-      # Keycloakify "velobits" theme jar — providers/, NOT themes/ (jar-based
+      # Keycloakify "velobits" theme jar - providers/, NOT themes/ (jar-based
       # themes are Keycloak providers). Build it BEFORE `docker compose up`,
       # otherwise the login page 500s (realm import itself still succeeds):
       #   cd keycloak-theme && npm ci && npm run build-keycloak-theme
@@ -121,7 +121,7 @@ services:
       start_period: 40s
 
   # ══════════════════════════════════════════════════════════════════════════
-  # KEYCLOAK BOOTSTRAP  —  one-shot init that provisions identity providers
+  # KEYCLOAK BOOTSTRAP  -  one-shot init that provisions identity providers
   # (Google / GitHub) and SMTP on the Velobits realm via the Admin API.
   # The realm itself is imported by keycloak-dev (--import-realm); this service
   # only adds the env-driven config that can't live in the realm JSON. It is
@@ -145,18 +145,18 @@ services:
       - -c
       - apk add --no-cache bash curl python3 >/dev/null && exec bash /scripts/bootstrap.sh
     environment:
-      # Internal service address — bootstrap.sh waits on $KEYCLOAK_URL/health/ready.
+      # Internal service address - bootstrap.sh waits on $KEYCLOAK_URL/health/ready.
       KEYCLOAK_URL: http://keycloak-dev:8080
       KEYCLOAK_REALM: Velobits
       KEYCLOAK_ADMIN: ${KEYCLOAK_DEV_ADMIN_USER:-admin}
       KEYCLOAK_ADMIN_PASSWORD: ${KEYCLOAK_DEV_ADMIN_PASSWORD:?set KEYCLOAK_DEV_ADMIN_PASSWORD in .env}
       REALM_EXPORT_PATH: /scripts/realm-export-dev.json
-      # Social login (optional — blank values leave the buttons disabled).
+      # Social login (optional - blank values leave the buttons disabled).
       GOOGLE_OAUTH_CLIENT_ID: ${GOOGLE_OAUTH_CLIENT_ID:-}
       GOOGLE_OAUTH_CLIENT_SECRET: ${GOOGLE_OAUTH_CLIENT_SECRET:-}
       GH_OAUTH_CLIENT_ID: ${GH_OAUTH_CLIENT_ID:-}
       GH_OAUTH_CLIENT_SECRET: ${GH_OAUTH_CLIENT_SECRET:-}
-      # SMTP (optional — gated on SMTP_HOST + SMTP_USERNAME inside the script).
+      # SMTP (optional - gated on SMTP_HOST + SMTP_USERNAME inside the script).
       SMTP_HOST: ${SMTP_HOST:-}
       SMTP_PORT: ${SMTP_PORT:-587}
       SMTP_USERNAME: ${SMTP_USERNAME:-}
@@ -164,12 +164,12 @@ services:
       EMAIL_FROM: ${EMAIL_FROM:-}
       # Dedicated service account for account-svc Admin API calls (optional).
       # Bootstrap creates/updates the client; account-svc (fixmytext-backend
-      # repo) reads the SAME values — keep the two .env files in sync.
+      # repo) reads the SAME values - keep the two .env files in sync.
       KEYCLOAK_SERVICE_ACCOUNT_ID: ${KEYCLOAK_SERVICE_ACCOUNT_ID:-account-svc}
       KEYCLOAK_SERVICE_ACCOUNT_SECRET: ${KEYCLOAK_SERVICE_ACCOUNT_SECRET:-}
       # Backchannel logout: URL Keycloak calls on SLO, and the frontend OIDC
       # client that issued the user sessions (MUST match the public client used
-      # for Authorization Code + PKCE — NOT the service-account client).
+      # for Authorization Code + PKCE - NOT the service-account client).
       # `kong` resolves over velobits-net once the fixmytext-backend stack is up.
       BACKCHANNEL_LOGOUT_URL: ${BACKCHANNEL_LOGOUT_URL:-http://kong:8000/api/v1/auth/backchannel-logout}
       KEYCLOAK_FRONTEND_CLIENT_ID: ${KEYCLOAK_FRONTEND_CLIENT_ID:-local-velobits}
@@ -194,6 +194,6 @@ networks:
 
 # ── Volumes ───────────────────────────────────────────────────────────────────
 volumes:
-  # Keycloak's identity database (separate from product DBs by design —
+  # Keycloak's identity database (separate from product DBs by design -
   # identity and product data are never co-located).
   keycloak-dev-pgdata:
