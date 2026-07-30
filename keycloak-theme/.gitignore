@@ -16,6 +16,9 @@ dist-ssr
 dist_keycloak
 .keycloakify
 
+# keycloakify cache when built via keycloak-theme-builder (XDG_CACHE_HOME)
+.cache
+
 # Storybook build output
 storybook-static
 
