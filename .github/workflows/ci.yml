@@ -220,7 +220,7 @@ jobs:
           # renders velobits. The local-velobits client enforces PKCE
           # (S256): without code_challenge Keycloak redirects the error to
           # redirect_uri instead of rendering the themed login page.
-          AUTH_URL="http://127.0.0.1:18080/realms/Velobits/protocol/openid-connect/auth?client_id=local-velobits&redirect_uri=http%3A%2F%2Flocalhost%3A3000%2Fauth%2Fcallback&response_type=code&scope=openid&code_challenge=E9Melhoa2OwvFrEMTJguCHaoeK1t8URWbuGJSstw-cM&code_challenge_method=S256"
+          AUTH_URL="http://127.0.0.1:18080/realms/Velobits/protocol/openid-connect/auth?client_id=local-velobits&redirect_uri=http%3A%2F%2Flocalhost%3A3100%2Fauth%2Fcallback&response_type=code&scope=openid&code_challenge=E9Melhoa2OwvFrEMTJguCHaoeK1t8URWbuGJSstw-cM&code_challenge_method=S256"
           HTML=""
           for _ in $(seq 1 15); do
             HTML=$(curl -fsS "$AUTH_URL" || true)
