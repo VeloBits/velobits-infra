@@ -49,7 +49,7 @@ fi
 # KC 26 with start-dev does not expose /health/ready at port 8080 unless
 # --health-enabled=true is set (and even then it lives on the management
 # interface :9000). Probing the TARGET realm's OIDC discovery endpoint would
-# deadlock the fresh-import path — the realm doesn't exist until step 4 of
+# deadlock the fresh-import path - the realm doesn't exist until step 4 of
 # THIS script imports it. Probe the master realm instead: it returns 200
 # exactly when the server is up and serving realms, regardless of whether the
 # target realm has been imported yet. Set KEYCLOAK_HEALTH_URL to a reachable
@@ -90,7 +90,7 @@ REALM_STATUS=$(curl -fsS -o /dev/null -w "%{http_code}" \
 
 # ── 4. Import realm from JSON (skipped if realm already exists) ──────────────
 if [[ "$REALM_STATUS" == "200" ]]; then
-  echo "[bootstrap] realm '$KEYCLOAK_REALM' already exists — skipping import"
+  echo "[bootstrap] realm '$KEYCLOAK_REALM' already exists - skipping import"
 elif [[ "${1:-}" != "--skip-realm-import" ]]; then
   echo "[bootstrap] importing realm from $REALM_EXPORT_PATH ..."
   IMPORT_CODE=$(curl -sS -o /dev/null -w "%{http_code}" -X POST \
@@ -101,7 +101,7 @@ elif [[ "${1:-}" != "--skip-realm-import" ]]; then
   if [[ "$IMPORT_CODE" == "201" ]]; then
     echo "[bootstrap] realm imported"
   elif [[ "$IMPORT_CODE" == "409" ]]; then
-    echo "[bootstrap] realm already exists (409) — skipping"
+    echo "[bootstrap] realm already exists (409) - skipping"
   else
     echo "[bootstrap] FATAL: realm import failed with HTTP $IMPORT_CODE" >&2; exit 4
   fi
@@ -212,7 +212,7 @@ if [ -n "$REVIEW_CFG_ID" ]; then
     && echo "[bootstrap] review-profile set to off" \
     || echo "[bootstrap] review-profile config update failed (non-fatal)"
 else
-  echo "[bootstrap] review-profile execution has no config id — skipping (non-fatal)"
+  echo "[bootstrap] review-profile execution has no config id - skipping (non-fatal)"
 fi
 
 # ── Dedicated service account for account-svc ─────────────────────────────
@@ -270,7 +270,7 @@ print(json.dumps({
 import json, os; print(json.dumps({'secret': os.environ['KEYCLOAK_SERVICE_ACCOUNT_SECRET']}))")" \
       "$KEYCLOAK_URL/admin/realms/$KEYCLOAK_REALM/clients/$SA_UUID/client-secret" \
       || echo "[bootstrap] secret update failed (non-fatal)"
-    echo "[bootstrap] service account '$SA_CLIENT_ID' already exists — secret refreshed"
+    echo "[bootstrap] service account '$SA_CLIENT_ID' already exists - secret refreshed"
   fi
 
   if [ -n "$SA_UUID" ]; then
@@ -303,12 +303,12 @@ import json, os; print(json.dumps({'secret': os.environ['KEYCLOAK_SERVICE_ACCOUN
         "$KEYCLOAK_URL/admin/realms/$KEYCLOAK_REALM/users/$SA_USER_ID/role-mappings/clients/$REALM_MGMT_UUID")
       echo "[bootstrap] realm-management roles assigned (HTTP $ROLE_ASSIGN_CODE)"
     else
-      echo "[bootstrap] WARNING: could not resolve SA user or realm-management client — roles not assigned"
+      echo "[bootstrap] WARNING: could not resolve SA user or realm-management client - roles not assigned"
     fi
 
   fi
 else
-  echo "[bootstrap] KEYCLOAK_SERVICE_ACCOUNT_SECRET not set — skipping service account setup"
+  echo "[bootstrap] KEYCLOAK_SERVICE_ACCOUNT_SECRET not set - skipping service account setup"
 fi
 
 # ── Register backchannel logout URL on the OIDC frontend client ────────────
@@ -316,7 +316,7 @@ fi
 # sessions (KEYCLOAK_FRONTEND_CLIENT_ID), NOT the service-account client.
 # Keycloak only calls backchannelLogoutUrl on the client that authenticated the
 # user. The service-account client uses client_credentials and never has user
-# sessions — registering the URL there means it is never called.
+# sessions - registering the URL there means it is never called.
 if [ -n "${BACKCHANNEL_LOGOUT_URL:-}" ] && [ -n "${KEYCLOAK_FRONTEND_CLIENT_ID:-}" ]; then
   echo "[bootstrap] registering backchannel logout URL on frontend client '$KEYCLOAK_FRONTEND_CLIENT_ID' ..."
   FRONTEND_CLIENT_LIST=$(curl -s \
@@ -349,10 +349,10 @@ print(json.dumps(rep))")
       || echo "[bootstrap] backchannel logout URL update failed (non-fatal)"
     echo "[bootstrap] backchannel logout URL set to $BACKCHANNEL_LOGOUT_URL"
   else
-    echo "[bootstrap] WARNING: frontend client '$KEYCLOAK_FRONTEND_CLIENT_ID' not found — backchannel logout URL not registered"
+    echo "[bootstrap] WARNING: frontend client '$KEYCLOAK_FRONTEND_CLIENT_ID' not found - backchannel logout URL not registered"
   fi
 elif [ -n "${BACKCHANNEL_LOGOUT_URL:-}" ]; then
-  echo "[bootstrap] WARNING: BACKCHANNEL_LOGOUT_URL set but KEYCLOAK_FRONTEND_CLIENT_ID is unset — backchannel logout URL not registered"
+  echo "[bootstrap] WARNING: BACKCHANNEL_LOGOUT_URL set but KEYCLOAK_FRONTEND_CLIENT_ID is unset - backchannel logout URL not registered"
 fi
 
 echo "[bootstrap] done"

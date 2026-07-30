@@ -1,0 +1,7 @@
+# builder.Dockerfile has no COPY — keep the build context minimal anyway so a
+# populated node_modules/ or dist never gets shipped to the docker daemon.
+node_modules
+dist
+dist_keycloak
+.cache
+.storybook-static

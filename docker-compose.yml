@@ -1,4 +1,4 @@
-# velobits-infra — shared VeloBits platform infrastructure (dev stack).
+# velobits-infra - shared VeloBits platform infrastructure (dev stack).
 #
 # Owns the org-level pieces that sit in front of / beside the product apps:
 #   traefik        edge reverse proxy for all *.velobits.dev subdomains (:80)
@@ -21,7 +21,7 @@
 services:
 
   # ══════════════════════════════════════════════════════════════════════════
-  # TRAEFIK — edge reverse proxy for all *.velobits.dev subdomains.
+  # TRAEFIK - edge reverse proxy for all *.velobits.dev subdomains.
   # Owns external port :80. Dev routes live in traefik/rules/.
   # ══════════════════════════════════════════════════════════════════════════
 
@@ -48,7 +48,7 @@ services:
       - velobits-net
 
   # ══════════════════════════════════════════════════════════════════════════
-  # KEYCLOAK DEV  —  identity provider for the Velobits realm.
+  # KEYCLOAK DEV  -  identity provider for the Velobits realm.
   # Dev realm export is at keycloak/realm-export-dev.json.
   # The prod equivalent is provisioned during production deploy
   # (docs/keycloak-production-setup.md).
@@ -71,6 +71,54 @@ services:
       interval: 5s
       timeout: 3s
       retries: 5
+
+# One-shot theme build: compiles keycloak-theme/ into dist_keycloak/velobits.jar
+  # before keycloak-dev starts, so a fresh clone works with plain `docker compose up`
+  # (no host Node/JDK needed). If the jar already exists the service exits
+  # immediately — rebuilds must be explicit because Docker file-locks the mounted
+  # jar while keycloak-dev runs (Windows EPERM on rename):
+  #   docker compose stop keycloak-dev
+  #   FORCE_THEME_REBUILD=1 docker compose up keycloak-theme-builder
+  #   docker compose start keycloak-dev
+  keycloak-theme-builder:
+    build:
+      context: ./keycloak-theme
+      dockerfile: builder.Dockerfile
+    container_name: keycloak-theme-builder
+    restart: "no"
+    mem_limit: 2g
+    working_dir: /work
+    environment:
+      FORCE_THEME_REBUILD: ${FORCE_THEME_REBUILD:-0}
+      # keycloakify fs.rename()s the finished jar from its cache dir into
+      # dist_keycloak/. With the cache at its default location
+      # (node_modules/.cache — a named volume here) that rename crosses
+      # filesystems and dies with EXDEV. Keep the cache on the same bind
+      # mount as dist_keycloak/. (.cache/ is git- and docker-ignored.)
+      XDG_CACHE_HOME: /work/.cache
+    entrypoint:
+      - /bin/sh
+      - -c
+      - |
+        set -e
+        if [ -f dist_keycloak/velobits.jar ] && [ "$${FORCE_THEME_REBUILD}" != "1" ]; then
+          echo "[theme-builder] dist_keycloak/velobits.jar exists — skipping (set FORCE_THEME_REBUILD=1 to rebuild)"
+          exit 0
+        fi
+        echo "[theme-builder] building velobits.jar (first run downloads deps — takes a few minutes)..."
+        npm ci
+        npm run build-keycloak-theme
+        echo "[theme-builder] done: dist_keycloak/velobits.jar"
+    volumes:
+      - ./keycloak-theme:/work
+      # node_modules + ~/.m2 live in named volumes: keeps npm I/O inside the
+      # Docker VM (bind-mounted node_modules on Windows is painfully slow) and
+      # caches Maven deps across rebuilds.
+      - theme-node-modules:/work/node_modules
+      - theme-m2:/root/.m2
+      - theme-npm-cache:/root/.npm
+    networks:
+      - velobits-net
 
   keycloak-dev:
     image: quay.io/keycloak/keycloak:26.0.8
@@ -95,7 +143,7 @@ services:
       KEYCLOAK_ADMIN_PASSWORD: ${KEYCLOAK_DEV_ADMIN_PASSWORD:?set KEYCLOAK_DEV_ADMIN_PASSWORD in .env}
     volumes:
       - ./keycloak/realm-export-dev.json:/opt/keycloak/data/import/realm.json:ro
-      # Keycloakify "velobits" theme jar — providers/, NOT themes/ (jar-based
+      # Keycloakify "velobits" theme jar - providers/, NOT themes/ (jar-based
       # themes are Keycloak providers). Build it BEFORE `docker compose up`,
       # otherwise the login page 500s (realm import itself still succeeds):
       #   cd keycloak-theme && npm ci && npm run build-keycloak-theme
@@ -108,6 +156,8 @@ services:
     depends_on:
       keycloak-dev-db:
         condition: service_healthy
+      keycloak-theme-builder:
+        condition: service_completed_successfully
     networks:
       - velobits-net
     # KC_HEALTH_ENABLED=true exposes /health/ready on management port 9000.
@@ -121,7 +171,7 @@ services:
       start_period: 40s
 
   # ══════════════════════════════════════════════════════════════════════════
-  # KEYCLOAK BOOTSTRAP  —  one-shot init that provisions identity providers
+  # KEYCLOAK BOOTSTRAP  -  one-shot init that provisions identity providers
   # (Google / GitHub) and SMTP on the Velobits realm via the Admin API.
   # The realm itself is imported by keycloak-dev (--import-realm); this service
   # only adds the env-driven config that can't live in the realm JSON. It is
@@ -145,18 +195,18 @@ services:
       - -c
       - apk add --no-cache bash curl python3 >/dev/null && exec bash /scripts/bootstrap.sh
     environment:
-      # Internal service address — bootstrap.sh waits on $KEYCLOAK_URL/health/ready.
+      # Internal service address - bootstrap.sh waits on $KEYCLOAK_URL/health/ready.
       KEYCLOAK_URL: http://keycloak-dev:8080
       KEYCLOAK_REALM: Velobits
       KEYCLOAK_ADMIN: ${KEYCLOAK_DEV_ADMIN_USER:-admin}
       KEYCLOAK_ADMIN_PASSWORD: ${KEYCLOAK_DEV_ADMIN_PASSWORD:?set KEYCLOAK_DEV_ADMIN_PASSWORD in .env}
       REALM_EXPORT_PATH: /scripts/realm-export-dev.json
-      # Social login (optional — blank values leave the buttons disabled).
+      # Social login (optional - blank values leave the buttons disabled).
       GOOGLE_OAUTH_CLIENT_ID: ${GOOGLE_OAUTH_CLIENT_ID:-}
       GOOGLE_OAUTH_CLIENT_SECRET: ${GOOGLE_OAUTH_CLIENT_SECRET:-}
       GH_OAUTH_CLIENT_ID: ${GH_OAUTH_CLIENT_ID:-}
       GH_OAUTH_CLIENT_SECRET: ${GH_OAUTH_CLIENT_SECRET:-}
-      # SMTP (optional — gated on SMTP_HOST + SMTP_USERNAME inside the script).
+      # SMTP (optional - gated on SMTP_HOST + SMTP_USERNAME inside the script).
       SMTP_HOST: ${SMTP_HOST:-}
       SMTP_PORT: ${SMTP_PORT:-587}
       SMTP_USERNAME: ${SMTP_USERNAME:-}
@@ -164,12 +214,12 @@ services:
       EMAIL_FROM: ${EMAIL_FROM:-}
       # Dedicated service account for account-svc Admin API calls (optional).
       # Bootstrap creates/updates the client; account-svc (fixmytext-backend
-      # repo) reads the SAME values — keep the two .env files in sync.
+      # repo) reads the SAME values - keep the two .env files in sync.
       KEYCLOAK_SERVICE_ACCOUNT_ID: ${KEYCLOAK_SERVICE_ACCOUNT_ID:-account-svc}
       KEYCLOAK_SERVICE_ACCOUNT_SECRET: ${KEYCLOAK_SERVICE_ACCOUNT_SECRET:-}
       # Backchannel logout: URL Keycloak calls on SLO, and the frontend OIDC
       # client that issued the user sessions (MUST match the public client used
-      # for Authorization Code + PKCE — NOT the service-account client).
+      # for Authorization Code + PKCE - NOT the service-account client).
       # `kong` resolves over velobits-net once the fixmytext-backend stack is up.
       BACKCHANNEL_LOGOUT_URL: ${BACKCHANNEL_LOGOUT_URL:-http://kong:8000/api/v1/auth/backchannel-logout}
       KEYCLOAK_FRONTEND_CLIENT_ID: ${KEYCLOAK_FRONTEND_CLIENT_ID:-local-velobits}
@@ -194,6 +244,10 @@ networks:
 
 # ── Volumes ───────────────────────────────────────────────────────────────────
 volumes:
-  # Keycloak's identity database (separate from product DBs by design —
+  # Keycloak's identity database (separate from product DBs by design -
   # identity and product data are never co-located).
   keycloak-dev-pgdata:
+  # Theme-builder caches (npm deps + Maven repo) — safe to `docker volume rm`.
+  theme-node-modules:
+  theme-m2:
+  theme-npm-cache:
