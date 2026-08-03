@@ -20,14 +20,12 @@
   "quickLoginCheckMilliSeconds": 1000,
   "maxDeltaTimeSeconds": 43200,
   "failureFactor": 5,
-  "otpPolicy": {
-    "type": "totp",
-    "algorithm": "HmacSHA256",
-    "initialCounter": 0,
-    "digits": 6,
-    "lookAheadWindow": 1,
-    "period": 30
-  },
+  "otpPolicyType": "totp",
+  "otpPolicyAlgorithm": "HmacSHA256",
+  "otpPolicyInitialCounter": 0,
+  "otpPolicyDigits": 6,
+  "otpPolicyLookAheadWindow": 1,
+  "otpPolicyPeriod": 30,
   "roles": {
     "realm": [
       {

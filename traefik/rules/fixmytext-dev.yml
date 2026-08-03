@@ -1,6 +1,6 @@
 # Dev Traefik routes for local VeloBits/FixMyText services.
 #
-# Frontend Docker compose publishes the nginx router on host port 3000.
+# Frontend Docker compose publishes the nginx router on host port 3100.
 # Backend services live on the same Docker network as Traefik.
 #
 # Higher priority wins when both routers could match.
@@ -62,4 +62,4 @@ http:
     fixmytext-dev-web-svc:
       loadBalancer:
         servers:
-          - url: "http://host.docker.internal:3000"
+          - url: "http://host.docker.internal:3100"
