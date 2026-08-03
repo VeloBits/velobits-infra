@@ -1,0 +1,24 @@
+# Keep the repo-root build context small for keycloak-theme/prod.Dockerfile
+# (context = repo root so the image can bake both the theme and the realm).
+# Only keycloak-theme/ and keycloak/realm-export-prod.json are actually needed.
+.git
+.github
+.env
+.env.*
+!.env.example
+docs
+traefik
+renovate.json
+
+# Theme build outputs + deps — regenerated inside the image, never shipped in.
+**/node_modules
+keycloak-theme/dist
+keycloak-theme/dist_keycloak
+keycloak-theme/.cache
+keycloak-theme/.keycloakify
+keycloak-theme/storybook-static
+keycloak-theme/.storybook-static
+
+# Noise
+**/*.log
+**/.DS_Store
