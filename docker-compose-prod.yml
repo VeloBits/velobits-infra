@@ -1,0 +1,155 @@
+# velobits-infra — PRODUCTION identity stack (auth.velobits.dev).
+#
+# Three services, nothing more:
+#   traefik        edge reverse proxy + Let's Encrypt TLS on :443
+#   keycloak-db    dedicated Postgres for the identity store
+#   velobits-auth  self-contained Keycloak image — theme jar + kc.sh build +
+#                  realm import all BAKED IN (keycloak-theme/prod.Dockerfile).
+#                  No host volume mounts, no bootstrap sidecar.
+#
+# The dev counterpart (docker-compose.yml) bind-mounts the theme jar and runs
+# `start-dev`; here the image is an immutable artifact you build once, push to a
+# registry, and deploy anywhere.
+#
+# Prereqs on the host:
+#   - DNS: auth.velobits.dev -> this host's public IP (needed for ACME HTTP-01).
+#   - Ports 80 and 443 reachable from the internet.
+#   - .env populated (see .env.example — the "PRODUCTION" section).
+#
+# Bring up:
+#   docker compose -f docker-compose-prod.yml up -d --build
+#
+# The Velobits-Prod realm imports on first boot (idempotent). SMTP, social IdPs,
+# and the account-svc service account are NOT auto-provisioned here — configure
+# them in the admin console, or run keycloak/bootstrap.sh ad-hoc against the
+# running instance (see docs/keycloak-production-setup.md).
+
+services:
+
+  # ══════════════════════════════════════════════════════════════════════════
+  # TRAEFIK — edge reverse proxy + TLS termination.
+  # Owns :80 (ACME challenge + HTTPS redirect) and :443 (HTTPS).
+  # Prod routes live in traefik/rules-prod/.
+  # ══════════════════════════════════════════════════════════════════════════
+
+  traefik:
+    image: traefik:v3.2
+    container_name: velobits-traefik-prod
+    restart: unless-stopped
+    command:
+      # Entry points.
+      - --entrypoints.web.address=:80
+      - --entrypoints.websecure.address=:443
+      # Force every :80 request onto HTTPS.
+      - --entrypoints.web.http.redirections.entrypoint.to=websecure
+      - --entrypoints.web.http.redirections.entrypoint.scheme=https
+      # Let's Encrypt via HTTP-01 on the web entrypoint. acme.json persists in a
+      # named volume so restarts don't re-issue (and hit rate limits).
+      - --certificatesresolvers.le.acme.httpchallenge=true
+      - --certificatesresolvers.le.acme.httpchallenge.entrypoint=web
+      - --certificatesresolvers.le.acme.email=${ACME_EMAIL:?set ACME_EMAIL in .env}
+      - --certificatesresolvers.le.acme.storage=/acme/acme.json
+      # Dynamic routing config (file provider — see rules-prod/).
+      - --providers.file.directory=/etc/traefik/rules
+      - --providers.file.watch=true
+      - --log.level=INFO
+      - --accesslog=true
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./traefik/rules-prod:/etc/traefik/rules:ro
+      - traefik-acme:/acme
+    networks:
+      - velobits-net
+
+  # ══════════════════════════════════════════════════════════════════════════
+  # KEYCLOAK DB — dedicated Postgres for the identity store.
+  # ══════════════════════════════════════════════════════════════════════════
+
+  keycloak-db:
+    image: postgres:16-alpine
+    container_name: keycloak-prod-db
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${KEYCLOAK_PROD_DB_USER:?set KEYCLOAK_PROD_DB_USER in .env}
+      POSTGRES_PASSWORD: ${KEYCLOAK_PROD_DB_PASSWORD:?set KEYCLOAK_PROD_DB_PASSWORD in .env}
+      POSTGRES_DB: keycloak_prod_db
+    volumes:
+      - keycloak-prod-pgdata:/var/lib/postgresql/data
+    networks:
+      - velobits-net
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${KEYCLOAK_PROD_DB_USER} -d keycloak_prod_db"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+
+  # ══════════════════════════════════════════════════════════════════════════
+  # VELOBITS-AUTH — the baked Keycloak image (theme + optimized build + realm).
+  # Build context is the repo root so prod.Dockerfile can reach both the theme
+  # source and the realm export. The image is environment-agnostic; all
+  # connection/hostname/proxy settings come from env here.
+  # ══════════════════════════════════════════════════════════════════════════
+
+  velobits-auth:
+    build:
+      context: .
+      dockerfile: keycloak-theme/prod.Dockerfile
+    # Tag it for your registry, e.g. ghcr.io/velobits/velobits-auth:<version>,
+    # so `docker compose push` / pull works across hosts.
+    image: velobits/velobits-auth:prod
+    container_name: velobits-auth
+    restart: unless-stopped
+    mem_limit: 1g
+    # Image CMD already: start --optimized --import-realm
+    environment:
+      # ── Database ──
+      KC_DB: postgres
+      KC_DB_URL: jdbc:postgresql://keycloak-db:5432/keycloak_prod_db
+      KC_DB_USERNAME: ${KEYCLOAK_PROD_DB_USER:?set KEYCLOAK_PROD_DB_USER in .env}
+      KC_DB_PASSWORD: ${KEYCLOAK_PROD_DB_PASSWORD:?set KEYCLOAK_PROD_DB_PASSWORD in .env}
+      # ── Hostname / proxy ──
+      # Full public URL. Strict hostname stays ON in prod (secure default). TLS
+      # ends at Traefik, so Keycloak serves HTTP internally and trusts the
+      # forwarded headers Traefik sets.
+      KC_HOSTNAME: https://auth.velobits.dev
+      KC_HTTP_ENABLED: "true"
+      KC_PROXY_HEADERS: xforwarded
+      KC_HEALTH_ENABLED: "true"
+      # ── Bootstrap admin (used only until a real admin exists; rotate after) ──
+      KEYCLOAK_ADMIN: ${KEYCLOAK_PROD_ADMIN_USER:-admin}
+      KEYCLOAK_ADMIN_PASSWORD: ${KEYCLOAK_PROD_ADMIN_PASSWORD:?set KEYCLOAK_PROD_ADMIN_PASSWORD in .env}
+      # ── Theme runtime knobs (re-brand without rebuilding the jar) ──
+      # Defaults come from vite.config.ts; uncomment to override per deploy.
+      # SHADCN_THEME_APP_NAME: Velobits
+    depends_on:
+      keycloak-db:
+        condition: service_healthy
+    networks:
+      - velobits-net
+    # KC 26 UBI-micro image has no curl; hit /health/ready on mgmt port 9000 via
+    # bash /dev/tcp (same trick as the dev stack).
+    healthcheck:
+      test: ["CMD", "bash", "-c", "exec 3<>/dev/tcp/localhost/9000 && printf 'GET /health/ready HTTP/1.0\\r\\nHost: localhost\\r\\n\\r\\n' >&3 && cat <&3 | grep -q UP"]
+      interval: 10s
+      timeout: 5s
+      retries: 30
+      start_period: 60s
+
+
+# ── Shared network ────────────────────────────────────────────────────────────
+# Same fixed, attachable name as dev so product PROD stacks can join it with
+# `external: true`. This stack owns and creates it on the prod host.
+networks:
+  velobits-net:
+    name: velobits-net
+    driver: bridge
+    attachable: true
+
+# ── Volumes ───────────────────────────────────────────────────────────────────
+volumes:
+  # Identity database — the one stateful thing here; back it up.
+  keycloak-prod-pgdata:
+  # Let's Encrypt account key + issued certs. Persist to avoid ACME rate limits.
+  traefik-acme:
