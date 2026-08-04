@@ -121,11 +121,17 @@ weekly. Renovate keeps image tags and action digests updated (renovate.json).
 
 `.github/workflows/deploy.yml` is a **manual, any-branch** pipeline: run it
 from the Actions tab on whichever branch you want deployed. It builds the
-theme jar, packages the runtime files, and creates an Octopus release —
-feature branches can only reach the **Development** environment; `main`
-releases promote **Development → Production** from the Octopus portal.
+theme jar, packages the runtime files + theme source, and creates an Octopus
+release — feature branches can only reach the **Development** environment
+(dev stack, prebuilt jar); `main` releases promote **Development →
+Production** from the Octopus portal, where the deploy bakes the
+`velobits-auth` image on the target host (`docker-compose-prod.yml` +
+`keycloak-theme/prod.Dockerfile`).
 Runtime secrets live in Octopus sensitive variables (never in git); the
 GitHub↔Octopus connection uses OIDC, so no API key is stored anywhere.
+Deployed environments use a **remote Aiven Postgres** (separate database per
+environment) — the local Postgres containers in the compose files only run in
+laptop quickstarts, so the VM holds no identity data.
 
 Setup and day-to-day lifecycle: [docs/octopus-deployment.md](docs/octopus-deployment.md).
 

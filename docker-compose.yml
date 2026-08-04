@@ -46,6 +46,7 @@ services:
       - ./traefik/rules:/etc/traefik/rules:ro
     networks:
       - velobits-net
+      - velobits-proxy-net
 
   # ══════════════════════════════════════════════════════════════════════════
   # KEYCLOAK DEV  -  identity provider for the Velobits realm.
@@ -160,6 +161,7 @@ services:
         condition: service_completed_successfully
     networks:
       - velobits-net
+      - velobits-proxy-net
     # KC_HEALTH_ENABLED=true exposes /health/ready on management port 9000.
     # The KC 26 UBI-micro image omits curl, so we use bash /dev/tcp to hit
     # the management health endpoint instead.
@@ -217,12 +219,9 @@ services:
       # repo) reads the SAME values - keep the two .env files in sync.
       KEYCLOAK_SERVICE_ACCOUNT_ID: ${KEYCLOAK_SERVICE_ACCOUNT_ID:-account-svc}
       KEYCLOAK_SERVICE_ACCOUNT_SECRET: ${KEYCLOAK_SERVICE_ACCOUNT_SECRET:-}
-      # Backchannel logout: URL Keycloak calls on SLO, and the frontend OIDC
-      # client that issued the user sessions (MUST match the public client used
-      # for Authorization Code + PKCE - NOT the service-account client).
+      # Backchannel logout is NOT configured here: bootstrap.sh syncs it from
+      # realm-export-dev.json (one backchannel.logout.url per app client).
       # `kong` resolves over velobits-net once the fixmytext-backend stack is up.
-      BACKCHANNEL_LOGOUT_URL: ${BACKCHANNEL_LOGOUT_URL:-http://kong:8000/api/v1/auth/backchannel-logout}
-      KEYCLOAK_FRONTEND_CLIENT_ID: ${KEYCLOAK_FRONTEND_CLIENT_ID:-local-velobits}
     volumes:
       - ./keycloak/bootstrap.sh:/scripts/bootstrap.sh:ro
       - ./keycloak/realm-export-dev.json:/scripts/realm-export-dev.json:ro
@@ -231,6 +230,7 @@ services:
         condition: service_healthy
     networks:
       - velobits-net
+      - velobits-proxy-net
 
 
 # ── Shared network ────────────────────────────────────────────────────────────
@@ -239,6 +239,10 @@ services:
 networks:
   velobits-net:
     name: velobits-net
+    driver: bridge
+    attachable: true
+  velobits-proxy-net:
+    name: velobits-proxy-net
     driver: bridge
     attachable: true
 

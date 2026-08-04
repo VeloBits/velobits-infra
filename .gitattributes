@@ -4,5 +4,5 @@
 
 # Rendered into the runtime .env on the Linux VM by Octopus — a CRLF here
 # would put a trailing \r inside secret values.
-octopus/env.template text eol=lf
+octopus/env.*.template text eol=lf
 octopus/docker-compose.deploy.yml text eol=lf

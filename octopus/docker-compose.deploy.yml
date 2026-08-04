@@ -8,7 +8,12 @@
 #    versions) and the entrypoint becomes a presence check that satisfies
 #    keycloak-dev's service_completed_successfully dependency.
 # 2. keycloak-dev: KC_HOSTNAME comes from the Octopus-rendered .env so each
-#    environment advertises its real public hostname instead of localhost.
+#    environment advertises its real public hostname instead of localhost,
+#    and KC_DB_URL points at the REMOTE managed Postgres (Aiven) — deployed
+#    environments run no database container.
+# 3. keycloak-dev-db: parked behind the `local-db` profile. It only exists for
+#    laptop quickstarts via the base compose file; on the VM the identity
+#    data lives on Aiven.
 
 services:
   keycloak-theme-builder:
@@ -25,6 +30,19 @@ services:
         echo "[deploy] ERROR: dist_keycloak/velobits.jar missing from the deployment package" >&2
         exit 1
 
+  keycloak-dev-db:
+    profiles: ["local-db"]
+
   keycloak-dev:
     environment:
-      KC_HOSTNAME: ${KC_HOSTNAME:?set KC_HOSTNAME in .env (rendered by Octopus from octopus/env.template)}
+      KC_HOSTNAME: ${KC_HOSTNAME:?set KC_HOSTNAME in .env (rendered by Octopus from octopus/env.dev.template)}
+      # JDBC form of the Aiven service URI with the DEV database, e.g.
+      #   jdbc:postgresql://pg-xxxxx-yyy.aivencloud.com:12345/keycloak_dev?sslmode=require
+      KC_DB_URL: ${KEYCLOAK_DEV_DB_URL:?set KEYCLOAK_DEV_DB_URL in .env (rendered by Octopus from octopus/env.dev.template)}
+    depends_on:
+      # The local Postgres is profiled out above; without required:false
+      # compose would refuse to start keycloak-dev over the missing service.
+      # (condition restated from the base file — the schema requires it.)
+      keycloak-dev-db:
+        condition: service_healthy
+        required: false

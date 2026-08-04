@@ -6,29 +6,45 @@ Everything here runs on free tiers.
 
 ```
 GitHub Actions ("Deploy via Octopus", any branch, manual trigger)
-  │  builds theme jar → zips runtime files → velobits-infra.<version>.zip
+  │  builds theme jar → zips runtime files + theme source → velobits-infra.<version>.zip
   ▼
 Octopus Cloud (free Starter tier)          release + channel + lifecycle
   │  polling Tentacle — VM dials OUT to Octopus :10943; no inbound ports
   ▼
 Oracle Ubuntu VM (Tentacle target, roles: velobits-docker-host)
      extract package → render .env from sensitive variables → deploy.sh
-     → docker compose up -d → health gates (Keycloak + bootstrap)
+     ├─ Development: docker-compose.yml + deploy override
+     │    start-dev stack, CI-prebuilt theme jar, bootstrap sidecar
+     └─ Production:  docker-compose-prod.yml
+          velobits-auth image BAKED ON THE VM (keycloak-theme/prod.Dockerfile:
+          theme jar + kc.sh build + prod realm), Traefik + Let's Encrypt :443
+
+     database: BOTH environments use a remote managed Postgres (Aiven free
+     plan) with separate databases per environment — the VM runs no database
+     container. (The local Postgres services in the compose files exist only
+     for laptop quickstarts, parked behind the `local-db` profile on deploys.)
 ```
+
+Building the production image on the VM (instead of pushing to a registry)
+keeps everything free and always matches the VM's CPU architecture; Docker's
+layer cache makes unchanged rebuilds near-instant. If you later want registry
+distribution, see "Upgrade path" at the end.
 
 | Piece | What it costs |
 |---|---|
 | Octopus Cloud **Starter** | Free — up to 10 targets, 10 projects, 10 users ([pricing](https://octopus.com/pricing/overview)) |
 | GitHub Actions | Free minutes on the org plan (this workflow uses ~5 min/run) |
 | Secret storage | Octopus **sensitive variables** (AES-encrypted, log-masked) + GitHub **OIDC** (no stored API key) — $0 |
-| Oracle VM | Always-free ARM/AMD shape you already have |
+| Oracle VM | Always-free Ampere A1 shape you already have |
+| Production database | [Aiven for PostgreSQL free plan](https://aiven.io/free-postgresql-database) — no time limit, 1 GB storage, automated backups |
 
 Repo files that make this work:
 
 - [.github/workflows/deploy.yml](../.github/workflows/deploy.yml) — the manual pipeline
-- [octopus/deploy.sh](../octopus/deploy.sh) — runs on the VM per deploy
-- [octopus/env.template](../octopus/env.template) — Octopus-variable → `.env` mapping
-- [octopus/docker-compose.deploy.yml](../octopus/docker-compose.deploy.yml) — deploy-time compose override
+- [octopus/deploy.sh](../octopus/deploy.sh) — runs on the VM per deploy; picks the stack from `DEPLOY_ENV`
+- [octopus/env.dev.template](../octopus/env.dev.template) / [octopus/env.prod.template](../octopus/env.prod.template) — Octopus-variable → `.env` mapping per environment
+- [octopus/docker-compose.deploy.yml](../octopus/docker-compose.deploy.yml) — deploy-time override for the dev stack
+- [docker-compose-prod.yml](../docker-compose-prod.yml) + [keycloak-theme/prod.Dockerfile](../keycloak-theme/prod.Dockerfile) — the production stack and its baked image
 
 ---
 
@@ -89,15 +105,25 @@ Project → Process → **Add step → Package → Deploy a Package**:
 Click **Configure features** and enable all three:
 
 1. **Custom Installation Directory** →
-   `/opt/velobits/#{Octopus.Environment.Name | ToLower}`
+   `/opt/velobits/velobits-infra/#{Octopus.Environment.Name | ToLower}`
    and tick **Purge this directory before installation** (safe: runtime state
    lives in Docker volumes; `.env` is re-rendered every deploy).
-2. **Substitute Variables in Templates** → target files: `octopus/env.template`
+2. **Substitute Variables in Templates** → target files (one per line):
+
+   ```
+   octopus/env.dev.template
+   octopus/env.prod.template
+   ```
+
 3. **Custom Deployment Scripts** → *Post-deployment script*, Bash:
 
    ```bash
-   bash octopus/deploy.sh
+   DEPLOY_ENV=$(get_octopusvariable "Octopus.Environment.Name") bash octopus/deploy.sh
    ```
+
+   `deploy.sh` uses `DEPLOY_ENV` to pick the stack: the dev compose files and
+   `env.dev.template` in Development, `docker-compose-prod.yml` (with an
+   on-VM image build) and `env.prod.template` in Production.
 
 Optional but recommended before going live: **Add step → Manual Intervention
 Required**, scoped to the `Production` environment only, placed *before* the
@@ -105,26 +131,52 @@ package step — gives you an explicit approval click on every prod deploy.
 
 ## Part 4 — Project variables (once, then on rotation)
 
-Project → Variables. Names map 1:1 to
-[octopus/env.template](../octopus/env.template); scope each value to an
-environment. Mark 🔒 rows **sensitive** (type: Sensitive) — encrypted at rest,
-masked in logs.
+Project → Variables. Names map 1:1 to the templates; each environment has its
+own variable set — scope every value to its environment. Mark 🔒 rows
+**sensitive** (type: Sensitive) — encrypted at rest, masked in logs.
 
-| Variable | Development value | Production value | 🔒 |
-|---|---|---|---|
-| `COMPOSE_PROJECT_NAME` | `velobits-dev` | `velobits-prod` | |
-| `KC_HOSTNAME` | `auth-dev.velobits.dev` | `auth.velobits.dev` | |
-| `KEYCLOAK_DEV_ADMIN_USER` | `admin` (optional) | e.g. `vb-admin` | |
-| `KEYCLOAK_DEV_ADMIN_PASSWORD` | `openssl rand -base64 32` | different value | 🔒 |
-| `KEYCLOAK_DEV_DB_USER` | `keycloak` | `keycloak` | |
-| `KEYCLOAK_DEV_DB_PASSWORD` | `openssl rand -base64 24` | different value | 🔒 |
-| `KEYCLOAK_SERVICE_ACCOUNT_ID` | `account-svc` (optional) | `account-svc` | |
-| `KEYCLOAK_SERVICE_ACCOUNT_SECRET` | shared with product stack | different value | 🔒 |
-| `BACKCHANNEL_LOGOUT_URL` | (omit → kong dev default) | `https://api.velobits.dev/api/v1/auth/backchannel-logout` | |
-| `KEYCLOAK_FRONTEND_CLIENT_ID` | (omit → `local-velobits`) | `fixmytext` | |
-| `GOOGLE_OAUTH_CLIENT_ID` / `_SECRET` | optional | optional | 🔒 secret |
-| `GH_OAUTH_CLIENT_ID` / `_SECRET` | optional | optional | 🔒 secret |
-| `SMTP_HOST` / `SMTP_PORT` / `SMTP_USERNAME` / `SMTP_PASSWORD` / `EMAIL_FROM` | optional | optional | 🔒 password |
+**Scoped to `Development`** ([octopus/env.dev.template](../octopus/env.dev.template)):
+
+| Variable | Value | 🔒 |
+|---|---|---|
+| `COMPOSE_PROJECT_NAME` | `velobits-dev` — keep it stable (prefixes volume/label names) | |
+| `KC_HOSTNAME` | `auth-dev.velobits.dev` | |
+| `KEYCLOAK_DEV_ADMIN_USER` | `admin` (optional, default) | |
+| `KEYCLOAK_DEV_ADMIN_PASSWORD` | `openssl rand -base64 32` | 🔒 |
+| `KEYCLOAK_DEV_DB_URL` | JDBC form of the Aiven URI, **dev database**: `jdbc:postgresql://<host>:<port>/keycloak_dev?sslmode=require` | |
+| `KEYCLOAK_DEV_DB_USER` | from the Aiven console | |
+| `KEYCLOAK_DEV_DB_PASSWORD` | from the Aiven console | 🔒 |
+| `KEYCLOAK_SERVICE_ACCOUNT_ID` | `account-svc` (optional) | |
+| `KEYCLOAK_SERVICE_ACCOUNT_SECRET` | shared with product stack `.env` | 🔒 |
+| `GOOGLE_OAUTH_CLIENT_ID` / `_SECRET` | optional | 🔒 secret |
+| `GH_OAUTH_CLIENT_ID` / `_SECRET` | optional | 🔒 secret |
+| `SMTP_HOST` / `SMTP_PORT` / `SMTP_USERNAME` / `SMTP_PASSWORD` / `EMAIL_FROM` | optional | 🔒 password |
+
+**Scoped to `Production`** ([octopus/env.prod.template](../octopus/env.prod.template)) —
+deliberately small: `KC_HOSTNAME` is fixed in `docker-compose-prod.yml`, and
+SMTP / social IdPs / `account-svc` are provisioned per
+[keycloak-production-setup.md](keycloak-production-setup.md), not per deploy:
+
+| Variable | Value | 🔒 |
+|---|---|---|
+| `COMPOSE_PROJECT_NAME` | `velobits-prod` — keep it stable (prefixes volume names, e.g. the ACME cert store) | |
+| `ACME_EMAIL` | ops email for Let's Encrypt expiry notices | |
+| `KEYCLOAK_PROD_ADMIN_USER` | optional (default `admin`) | |
+| `KEYCLOAK_PROD_ADMIN_PASSWORD` | **not** the dev value | 🔒 |
+| `KEYCLOAK_PROD_DB_URL` | JDBC form of the Aiven service URI: `jdbc:postgresql://<host>:<port>/defaultdb?sslmode=require` | |
+| `KEYCLOAK_PROD_DB_USER` | from the Aiven console (`avnadmin`, or a dedicated user) | |
+| `KEYCLOAK_PROD_DB_PASSWORD` | from the Aiven console | 🔒 |
+
+**The database for BOTH environments is a remote Aiven managed Postgres**
+(free plan: no time limit, 1 GB storage, automated backups included) — the VM
+runs no database container. A single free service hosts both environments:
+create two databases on it in the Aiven console (e.g. `keycloak_dev` and
+`keycloak_prod`) and point each environment's `*_DB_URL` at its own database.
+Keep `sslmode=require` in the URLs (Aiven enforces TLS), restrict **allowed
+IP addresses** to the VM's public IP instead of the default open-to-all, and
+pick the Aiven region closest to the Oracle VM. If dev load ever interferes
+with prod (they share the service's 1 CPU/1 GB), move prod to its own
+service/plan — only the URL variables change.
 
 Omitted optional variables render empty and the stack degrades gracefully
 (same contract as `.env.example`). If a **required** one is missing,
@@ -136,19 +188,29 @@ No API key is stored in GitHub — the workflow exchanges a GitHub-signed OIDC
 token for a short-lived Octopus token per run
 ([docs](https://octopus.com/docs/octopus-rest-api/openid-connect/github-actions)).
 
+One **org-wide** service account serves all VeloBits repos: Octopus service
+accounts are instance-level (permissions come from team membership), and a
+single account can hold **one OIDC identity per repo** — onboarding the next
+repo is just another identity + its GitHub variables, no new account.
+
 1. Octopus → Configuration → Users → **Service Accounts** → Add:
-   `github-actions-velobits-infra`. Grant it a team/role that can *create
+   `github-actions-velobits-oidc`. Grant it a team/role that can *create
    releases, push packages, and deploy* in your space (e.g. Project Deployer +
    Package Publisher, or Space Manager while solo).
-2. On the service account → **OIDC Identities → Add**:
+2. On the service account → **OIDC Identities → Add** (one per repo):
    - Issuer: `https://token.actions.githubusercontent.com`
    - Subject: `repo:VeloBits/velobits-infra:ref:*`
      (wildcard covers *any branch*, which this pipeline needs; supported since
-     Octopus 2024.1 — Cloud is always current)
+     Octopus 2024.1 — Cloud is always current. Future repos each get their own
+     identity, e.g. `repo:VeloBits/fixmytext-backend:ref:*` — avoid a single
+     `repo:VeloBits/*` catch-all so a rogue workflow in one repo can't be
+     broadened accidentally.)
 3. Copy the service account **ID** shown on that page.
-4. GitHub repo → Settings → Secrets and variables → Actions → **Variables**:
+4. GitHub → **Organization** Settings → Secrets and variables → Actions →
+   **Variables** (org-level, so every VeloBits repo inherits them —
+   repo-level works too if you prefer):
 
-   | Repo variable | Value |
+   | Variable | Value |
    |---|---|
    | `OCTOPUS_URL` | `https://velobits.octopus.app` |
    | `OCTOPUS_SERVICE_ACCOUNT_ID` | the ID from step 3 |
@@ -205,12 +267,14 @@ Interactive answers:
 Verify: Octopus → Infrastructure → Deployment targets → `oracle-vm-1` shows
 **Healthy** in both environments.
 
-**4. Oracle network for the app itself** (not for deploys): to serve traffic,
-allow ingress TCP 80 (and 443 later) in the VCN security list / NSG. Docker
-publishes ports via its own iptables chains, so the Ubuntu host firewall
-usually needs no extra rules — if 80 is still unreachable after opening the
-NSG, check `/etc/iptables/rules.v4` (Oracle images ship a restrictive
-default).
+**4. Oracle network for the app itself** (not for deploys): allow ingress TCP
+80 **and** 443 in the VCN security list / NSG — production terminates TLS on
+443 and Let's Encrypt's HTTP-01 challenge needs 80. For Production, DNS for
+`auth.velobits.dev` must point at this host's public IP *before* the first
+deploy, or ACME issuance fails. Docker publishes ports via its own iptables
+chains, so the Ubuntu host firewall usually needs no extra rules — if a port
+is still unreachable after opening the NSG, check `/etc/iptables/rules.v4`
+(Oracle images ship a restrictive default).
 
 > The Tentacle service runs as root by default, which also grants it Docker
 > access. Locking it down to a dedicated user in the `docker` group is a
@@ -236,10 +300,26 @@ default).
 2. Verify Development, then in the Octopus portal: project → Releases →
    `1.0.<run>` → **Deploy to Production** (approve the manual intervention if
    you added it). Only Release-channel versions offer this button.
+3. A Production deploy runs `docker compose -f docker-compose-prod.yml build
+   --pull` **on the VM**: the packaged theme source + prod realm are baked
+   into the `velobits-auth` image ([prod.Dockerfile](../keycloak-theme/prod.Dockerfile)),
+   then the stack starts and the deploy gates on the Keycloak healthcheck.
+   First build ≈ 10 min (npm ci + `kc.sh build`); unchanged layers are cached
+   after that. The `Velobits-Prod` realm imports on first boot (idempotent).
+
+**What restarts on each deploy** — Octopus purges and re-extracts the install
+directory, so bind mounts point at new inodes; `deploy.sh` therefore
+recreates what depends on them. Development: the whole stack is recreated
+(~60–90 s). Production: Traefik is recreated (~1 s blip; ACME certs persist
+in a volume) and `velobits-auth` restarts **only** if the rebuilt image
+actually differs — an unchanged prod redeploy is zero-downtime for Keycloak.
+The database isn't on the VM in either environment (remote Aiven Postgres),
+so deploys and recreations never touch identity data.
 
 **Roll back** — Octopus keeps every release + package: open the previous
 release → *Deploy to …* → done. Rollback is just re-deploying a known-good
-version (data in Docker volumes is untouched).
+version (data in Docker volumes is untouched; on prod the image is rebuilt
+from that release's packaged sources, hitting the Docker layer cache).
 
 **Audit** — every deploy records who, what version, which commit (version →
 run number → Actions run), full task log, and variable snapshot (sensitive
@@ -271,25 +351,38 @@ Practices this setup enforces or expects:
 
 ## Caveats & production notes
 
-- **One VM, two environments**: `docker-compose.yml` pins container names
-  (`velobits-traefik`, `keycloak-dev`…), the `velobits-net` network name, and
-  host ports 80/8080 — so Development and Production **cannot run
-  side-by-side on the same host**. Registering the one VM in both
-  environments is fine to exercise the promotion flow, but a Production
-  deploy will replace the running dev stack. When Production goes live,
-  either add a second always-free Oracle VM as the Production target (install
-  a second Tentacle there, register it only in `Production`, remove the first
-  VM from `Production`) — zero pipeline changes — or parameterize the compose
-  names/ports.
-- **This stack is dev-flavored**: Keycloak runs `start-dev` and imports
-  `realm-export-dev.json`. Promote-to-Production gives you process parity
-  (approvals, prod secrets, audit), but before real traffic follow
-  [keycloak-production-setup.md](keycloak-production-setup.md) (prod realm,
-  `start --optimized`, TLS at the edge, transactional SMTP).
+- **One VM, two environments**: both stacks own port 80 (prod also 443) and
+  both declare the `velobits-net` network, so Development and Production
+  **cannot run side-by-side on the same host**. Registering the one VM in
+  both environments is fine to exercise the full promotion flow, but a
+  Production deploy will conflict with a running dev stack (and vice versa).
+  When Production goes live, add a second always-free Oracle VM as the
+  Production target: install a Tentacle there, register it only in
+  `Production` with the same `velobits-docker-host` role, and remove the
+  first VM from `Production` — zero pipeline changes.
+- **Prod builds happen on the VM**: `npm ci` + vite + `kc.sh build` want
+  ~2–4 GB of RAM. The target is an Ampere A1 (4 OCPU / 24 GB, **arm64**) —
+  plenty. The arm64 part matters: images built on a stock GitHub runner are
+  amd64 and will NOT run on this host, which is exactly why the deploy builds
+  natively on the VM. Any future registry-built image must be
+  `--platform linux/arm64`.
+- **Post-deploy provisioning**: the prod stack intentionally has no bootstrap
+  sidecar. After the first Production deploy, configure SMTP / social IdPs /
+  `account-svc` per [keycloak-production-setup.md](keycloak-production-setup.md)
+  (admin console, or run `keycloak/bootstrap.sh` ad-hoc against
+  `https://auth.velobits.dev`), and rotate the bootstrap admin.
 - **Re-running a failed workflow attempt** produces version `…​.2` (attempt
   suffix) — expected, keeps packages unique.
 - **Compose < 2.24 on the VM** fails fast in `deploy.sh` at `config -q`
-  (cannot parse `!reset`): upgrade Docker via `get.docker.com`.
+  (cannot parse `!reset` in the dev override): upgrade via `get.docker.com`.
+- **Upgrade path — registry-distributed image**: if on-VM builds ever become
+  a burden (tiny VM, slow deploys), build `velobits-auth` in the workflow
+  with `docker buildx` (multi-arch: `linux/amd64,linux/arm64`), push to a
+  registry (GHCR private storage is limited on the free plan — ~500 MB —
+  which a Keycloak image exceeds; Docker Hub's free tier includes one private
+  repo), and switch the prod deploy to `pull` + `up -d`. Keep
+  `keycloak/realm-export-prod.json` out of any *public* image — realm exports
+  can carry client secrets.
 
 ## Troubleshooting
 
@@ -299,5 +392,9 @@ Practices this setup enforces or expects:
 | `create-release` can't find channel | Channel names must match the workflow exactly: `Release`, `Feature branches`. |
 | Login step: `Access denied` / no token exchanged | OIDC subject must be `repo:VeloBits/velobits-infra:ref:*` (exact org/repo case); check service account permissions. |
 | Target unhealthy in Octopus | `sudo systemctl status "Tentacle: velobits"` on the VM; polling needs outbound 10943 open (default-open on Oracle egress). |
-| Keycloak never healthy | `docker logs keycloak-dev` — usually a bad DB password after rotation (rotate DB password requires wiping the `keycloak-dev-pgdata` volume or updating Postgres user in place). |
-| Port 80 unreachable from internet | Oracle NSG/security-list ingress rule missing, or the image's default iptables INPUT rules (see Part 6.4). |
+| Keycloak never healthy | `docker logs keycloak-dev` (dev) / `docker logs velobits-auth` (prod) — usually a bad DB credential after rotation: rotate in the Aiven console AND the Octopus variable together, then redeploy. |
+| Keycloak can't reach the database | Aiven **allowed IP addresses** must include the VM's public IP; URL must be the JDBC form with `sslmode=require` and the right per-environment database name; check the Aiven service is powered on (free services may be shut down if unused for an extended period). |
+| Port 80/443 unreachable from internet | Oracle NSG/security-list ingress rule missing, or the image's default iptables INPUT rules (see Part 6.4). |
+| Prod image build fails / OOM-killed | The on-VM build needs ~2–4 GB RAM (npm ci + vite + `kc.sh build`). Use a bigger shape or the registry upgrade path (Caveats). |
+| Browser shows Traefik default cert on auth.velobits.dev | ACME issuance failed: DNS not pointing at the VM, port 80 closed (HTTP-01), or rate-limited. `docker logs velobits-traefik-prod`; the acme.json volume persists issued certs across restarts. |
+| `unknown flag: --ignore-buildable` during prod deploy | docker compose too old on the VM — upgrade via `get.docker.com` (>= 2.24 required anyway). |

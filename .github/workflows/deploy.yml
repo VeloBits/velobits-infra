@@ -9,10 +9,12 @@
 # to Production is always a manual step in the Octopus portal.
 #
 # Auth is OIDC (OctopusDeploy/login) — no long-lived API key stored in GitHub.
-# Required repo configuration (Settings → Secrets and variables → Actions):
+# Required Actions variables (org-level preferred so all VeloBits repos share
+# them; repo-level works too):
 #   vars.OCTOPUS_URL                  e.g. https://velobits.octopus.app
-#   vars.OCTOPUS_SERVICE_ACCOUNT_ID   Octopus service account ID (from the
-#                                     service account's OIDC identity page)
+#   vars.OCTOPUS_SERVICE_ACCOUNT_ID   ID of the shared service account
+#                                     github-actions-velobits-oidc (this repo's
+#                                     OIDC identity: repo:VeloBits/velobits-infra:ref:*)
 #   vars.OCTOPUS_SPACE                space name (defaults to "Default")
 # Full setup runbook: docs/octopus-deployment.md
 name: Deploy via Octopus
@@ -91,17 +93,26 @@ jobs:
           echo "version=$VERSION channel=$CHANNEL"
 
       - name: Stage runtime files
-        # Only what the VM needs: compose files, Traefik + Keycloak config,
-        # the prebuilt theme jar, and the Octopus deploy assets. No theme
-        # sources — octopus/docker-compose.deploy.yml neutralizes the on-host
-        # theme build.
+        # What the VM needs: compose files, Traefik + Keycloak config, the
+        # Octopus deploy assets, and BOTH theme forms:
+        #   - full theme source  → Production bakes the velobits-auth image on
+        #     the VM (context = package root, keycloak-theme/prod.Dockerfile),
+        #     so .dockerignore ships too;
+        #   - prebuilt jar       → Development bind-mounts it (the deploy
+        #     override neutralizes the on-host dev theme build).
         run: |
-          mkdir -p staging/keycloak-theme/dist_keycloak staging/octopus
-          cp docker-compose.yml staging/
+          mkdir -p staging/octopus
+          cp docker-compose.yml docker-compose-prod.yml .dockerignore staging/
           cp -r traefik staging/traefik
           cp -r keycloak staging/keycloak
+          rsync -a \
+            --exclude node_modules --exclude dist --exclude dist_keycloak \
+            --exclude .cache --exclude .keycloakify --exclude storybook-static \
+            keycloak-theme/ staging/keycloak-theme/
+          mkdir -p staging/keycloak-theme/dist_keycloak
           cp keycloak-theme/dist_keycloak/velobits.jar staging/keycloak-theme/dist_keycloak/
-          cp octopus/deploy.sh octopus/env.template octopus/docker-compose.deploy.yml staging/octopus/
+          cp octopus/deploy.sh octopus/env.dev.template octopus/env.prod.template \
+             octopus/docker-compose.deploy.yml staging/octopus/
 
       # Octopus actions are tag-pinned for now; Renovate
       # (helpers:pinGitHubActionDigests) pins them to digests on its next run.
@@ -117,8 +128,12 @@ jobs:
           package_id: ${{ env.PACKAGE_ID }}
           version: ${{ steps.meta.outputs.version }}
           base_path: staging
+          # .dockerignore is listed explicitly — glob matchers commonly skip
+          # dotfiles, and Production's on-VM image build needs it at the
+          # package root to keep the build context lean.
           files: |
             **/*
+            .dockerignore
           output_folder: packaged
 
       - name: Push package to Octopus built-in feed

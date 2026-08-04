@@ -74,7 +74,8 @@
             "access.token.claim": "true"
           }
         }
-      ]
+      ],
+      "frontchannelLogout": false
     },
     {
       "clientId": "fixmytext-backend",

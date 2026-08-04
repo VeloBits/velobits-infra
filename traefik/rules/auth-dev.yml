@@ -1,0 +1,11 @@
+http:
+  routers:
+    keycloak:
+      rule: Host(`auth.velobits.dev`)
+      service: keycloak
+
+  services:
+    keycloak:
+      loadBalancer:
+        servers:
+          - url: "http://keycloak-dev:8080"
