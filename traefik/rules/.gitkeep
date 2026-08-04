@@ -14,8 +14,8 @@
 #     content-app-svc:
 #       loadBalancer:
 #         servers:
-#           - url: "http://content-app:3001"
+#           - url: "http://content-app:3103"
 #     web-app-svc:
 #       loadBalancer:
 #         servers:
-#           - url: "http://web-app:3000"
+#           - url: "http://web-app:3100"

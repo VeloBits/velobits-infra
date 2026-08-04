@@ -1,0 +1,30 @@
+# Production Traefik dynamic routes for VeloBits identity.
+#
+# Loaded by the file provider (traefik service in docker-compose-prod.yml mounts
+# this dir at /etc/traefik/rules). The file provider is used instead of the
+# Docker provider for the same reason as dev — it avoids Docker API compatibility
+# issues on newer daemons.
+#
+# TLS is terminated here: the `le` cert resolver (Let's Encrypt HTTP-01, defined
+# via Traefik static flags in the compose command:) issues/renews the cert for
+# auth.velobits.dev. Keycloak itself listens plain HTTP on :8080 behind Traefik
+# and trusts X-Forwarded-* (KC_PROXY_HEADERS=xforwarded).
+
+http:
+  routers:
+    # Identity provider: production Keycloak (Velobits-Prod realm).
+    velobits-prod-auth:
+      rule: "Host(`auth.velobits.dev`)"
+      priority: 10
+      entryPoints:
+        - websecure
+      service: velobits-prod-keycloak-svc
+      tls:
+        certResolver: le
+
+  services:
+    velobits-prod-keycloak-svc:
+      loadBalancer:
+        servers:
+          # Container name of the baked Keycloak service on velobits-net.
+          - url: "http://velobits-auth:8080"

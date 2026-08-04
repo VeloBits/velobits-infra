@@ -56,9 +56,9 @@ The dev frontend client registers both the Vite (`/auth/callback`) and Next.js
 (`/app/auth/callback`) callback paths plus the silent-renew callback, on both the
 localhost and `velobits.dev` hosts:
 
-- `http://localhost:3000/auth/callback`
-- `http://localhost:3000/app/auth/callback`
-- `http://localhost:3000/app/auth/silent-callback`
+- `http://localhost:3100/auth/callback`
+- `http://localhost:3100/app/auth/callback`
+- `http://localhost:3100/app/auth/silent-callback`
 - `http://develop-fixmytext.velobits.dev/auth/callback`
 - `http://develop-fixmytext.velobits.dev/app/auth/callback`
 - `http://develop-fixmytext.velobits.dev/app/auth/silent-callback`
