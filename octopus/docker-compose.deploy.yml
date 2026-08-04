@@ -1,0 +1,30 @@
+# Octopus deploy-time override — applied by octopus/deploy.sh on the VM:
+#   docker compose -f docker-compose.yml -f octopus/docker-compose.deploy.yml up -d
+#
+# 1. keycloak-theme-builder: the CI pipeline ships a prebuilt
+#    keycloak-theme/dist_keycloak/velobits.jar inside the deployment package,
+#    so the VM never needs Node/Maven. `!reset` removes the base `build:` key
+#    (requires docker compose >= 2.24 — deploy.sh's `config -q` catches older
+#    versions) and the entrypoint becomes a presence check that satisfies
+#    keycloak-dev's service_completed_successfully dependency.
+# 2. keycloak-dev: KC_HOSTNAME comes from the Octopus-rendered .env so each
+#    environment advertises its real public hostname instead of localhost.
+
+services:
+  keycloak-theme-builder:
+    build: !reset null
+    image: alpine:3
+    entrypoint:
+      - /bin/sh
+      - -c
+      - |
+        if [ -f dist_keycloak/velobits.jar ]; then
+          echo "[deploy] using prebuilt dist_keycloak/velobits.jar from the deployment package"
+          exit 0
+        fi
+        echo "[deploy] ERROR: dist_keycloak/velobits.jar missing from the deployment package" >&2
+        exit 1
+
+  keycloak-dev:
+    environment:
+      KC_HOSTNAME: ${KC_HOSTNAME:?set KC_HOSTNAME in .env (rendered by Octopus from octopus/env.template)}

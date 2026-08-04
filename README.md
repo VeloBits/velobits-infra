@@ -9,8 +9,10 @@ velobits-infra/
 ├── docker-compose.yml     ← dev stack: Traefik + Keycloak (+ its own Postgres)
 ├── keycloak/              ← realm exports, bootstrap.sh, login/email themes
 ├── traefik/               ← static config reference + file-provider rules
+├── octopus/               ← Octopus deploy assets (deploy.sh, env template, override)
 └── docs/
-    └── keycloak-production-setup.md   ← prod provisioning runbook
+    ├── keycloak-production-setup.md   ← prod provisioning runbook
+    └── octopus-deployment.md          ← CD runbook: any-branch deploys via Octopus
 ```
 
 ## Responsibility
@@ -114,6 +116,18 @@ Secrets shared with product stacks (keep the `.env` files in sync):
 
 `codeql.yml` scans the Actions workflows (`actions` language) on push/PR and
 weekly. Renovate keeps image tags and action digests updated (renovate.json).
+
+## CD (Octopus Deploy)
+
+`.github/workflows/deploy.yml` is a **manual, any-branch** pipeline: run it
+from the Actions tab on whichever branch you want deployed. It builds the
+theme jar, packages the runtime files, and creates an Octopus release —
+feature branches can only reach the **Development** environment; `main`
+releases promote **Development → Production** from the Octopus portal.
+Runtime secrets live in Octopus sensitive variables (never in git); the
+GitHub↔Octopus connection uses OIDC, so no API key is stored anywhere.
+
+Setup and day-to-day lifecycle: [docs/octopus-deployment.md](docs/octopus-deployment.md).
 
 ### Branch protection
 

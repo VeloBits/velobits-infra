@@ -1,0 +1,161 @@
+# Manual any-branch deployment via Octopus Deploy.
+#
+# Run from the Actions tab ("Deploy via Octopus" → Run workflow → pick a
+# branch). Builds the theme jar, stages the runtime files, pushes a zip
+# package to the Octopus built-in feed, and creates a release:
+#   main             → "Release" channel          (Development → Production)
+#   any other branch → "Feature branches" channel (Development only)
+# Optionally auto-deploys the release to Development (default on). Promotion
+# to Production is always a manual step in the Octopus portal.
+#
+# Auth is OIDC (OctopusDeploy/login) — no long-lived API key stored in GitHub.
+# Required repo configuration (Settings → Secrets and variables → Actions):
+#   vars.OCTOPUS_URL                  e.g. https://velobits.octopus.app
+#   vars.OCTOPUS_SERVICE_ACCOUNT_ID   Octopus service account ID (from the
+#                                     service account's OIDC identity page)
+#   vars.OCTOPUS_SPACE                space name (defaults to "Default")
+# Full setup runbook: docs/octopus-deployment.md
+name: Deploy via Octopus
+
+on:
+  workflow_dispatch:
+    inputs:
+      deploy_to_development:
+        description: Deploy the release to Development after creating it
+        type: boolean
+        default: true
+
+permissions:
+  contents: read
+  id-token: write # OIDC token exchange with Octopus
+
+# Serialize releases so run numbers reach Octopus in order; Octopus itself
+# queues concurrent deployments per project/environment.
+concurrency:
+  group: octopus-deploy
+  cancel-in-progress: false
+
+env:
+  OCTOPUS_SPACE: ${{ vars.OCTOPUS_SPACE || 'Default' }}
+  OCTOPUS_PROJECT: velobits-infra
+  PACKAGE_ID: velobits-infra
+
+jobs:
+  release:
+    name: Package & release to Octopus
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: keycloak-theme/package-lock.json
+
+      # keycloakify shells out to Maven (preinstalled on ubuntu-latest) for
+      # jar packaging — it only needs a JDK. Mirrors ci.yml's theme-build job.
+      - uses: actions/setup-java@03ad4de0992f5dab5e18fcb136590ce7c4a0ac95 # v5.6.0
+        with:
+          distribution: temurin
+          java-version: "21"
+
+      - name: Build velobits theme jar
+        working-directory: keycloak-theme
+        run: |
+          npm ci
+          npm run build-keycloak-theme
+
+      - name: Compute release version + channel
+        id: meta
+        run: |
+          if [ "$GITHUB_REF_NAME" = "main" ]; then
+            VERSION="1.0.${GITHUB_RUN_NUMBER}"
+            CHANNEL="Release"
+          else
+            # A SemVer prerelease tag derived from the branch name routes the
+            # release into the Development-only "Feature branches" channel.
+            SLUG=$(printf '%s' "$GITHUB_REF_NAME" \
+              | tr '[:upper:]' '[:lower:]' \
+              | sed -E 's/[^a-z0-9]+/-/g; s/^-+//; s/-+$//' \
+              | cut -c1-40)
+            VERSION="0.0.${GITHUB_RUN_NUMBER}-${SLUG:-branch}"
+            CHANNEL="Feature branches"
+          fi
+          # Re-runs must not collide with the package pushed by attempt 1.
+          if [ "$GITHUB_RUN_ATTEMPT" != "1" ]; then
+            VERSION="${VERSION}.${GITHUB_RUN_ATTEMPT}"
+          fi
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+          echo "channel=$CHANNEL" >> "$GITHUB_OUTPUT"
+          echo "version=$VERSION channel=$CHANNEL"
+
+      - name: Stage runtime files
+        # Only what the VM needs: compose files, Traefik + Keycloak config,
+        # the prebuilt theme jar, and the Octopus deploy assets. No theme
+        # sources — octopus/docker-compose.deploy.yml neutralizes the on-host
+        # theme build.
+        run: |
+          mkdir -p staging/keycloak-theme/dist_keycloak staging/octopus
+          cp docker-compose.yml staging/
+          cp -r traefik staging/traefik
+          cp -r keycloak staging/keycloak
+          cp keycloak-theme/dist_keycloak/velobits.jar staging/keycloak-theme/dist_keycloak/
+          cp octopus/deploy.sh octopus/env.template octopus/docker-compose.deploy.yml staging/octopus/
+
+      # Octopus actions are tag-pinned for now; Renovate
+      # (helpers:pinGitHubActionDigests) pins them to digests on its next run.
+      - name: Log in to Octopus (OIDC)
+        uses: OctopusDeploy/login@v1
+        with:
+          server: ${{ vars.OCTOPUS_URL }}
+          service_account_id: ${{ vars.OCTOPUS_SERVICE_ACCOUNT_ID }}
+
+      - name: Create zip package
+        uses: OctopusDeploy/create-zip-package-action@v3
+        with:
+          package_id: ${{ env.PACKAGE_ID }}
+          version: ${{ steps.meta.outputs.version }}
+          base_path: staging
+          files: |
+            **/*
+          output_folder: packaged
+
+      - name: Push package to Octopus built-in feed
+        uses: OctopusDeploy/push-package-action@v3
+        with:
+          packages: packaged/${{ env.PACKAGE_ID }}.${{ steps.meta.outputs.version }}.zip
+
+      - name: Create release
+        id: release
+        uses: OctopusDeploy/create-release-action@v3
+        with:
+          project: ${{ env.OCTOPUS_PROJECT }}
+          channel: ${{ steps.meta.outputs.channel }}
+          release_number: ${{ steps.meta.outputs.version }}
+          package_version: ${{ steps.meta.outputs.version }}
+
+      - name: Deploy to Development
+        if: inputs.deploy_to_development
+        id: deploy
+        uses: OctopusDeploy/deploy-release-action@v3
+        with:
+          project: ${{ env.OCTOPUS_PROJECT }}
+          release_number: ${{ steps.release.outputs.release_number }}
+          environments: Development
+
+      - name: Wait for Development deployment to finish
+        if: inputs.deploy_to_development
+        uses: OctopusDeploy/await-task-action@v3
+        with:
+          server_task_id: ${{ fromJson(steps.deploy.outputs.server_tasks)[0].serverTaskId }}
+
+      - name: Job summary
+        run: |
+          {
+            echo "## Octopus release"
+            echo "- **Version:** \`${{ steps.meta.outputs.version }}\`"
+            echo "- **Channel:** ${{ steps.meta.outputs.channel }}"
+            echo "- **Branch:** \`$GITHUB_REF_NAME\`"
+            echo "- Promote to Production from the Octopus portal (Release-channel versions only)."
+          } >> "$GITHUB_STEP_SUMMARY"
