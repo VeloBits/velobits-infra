@@ -10,3 +10,11 @@ Thumbs.db
 .vscode/
 
 .claude*
+# local backup copies (never commit)
+*.bak
+
+# Temporary files for backup scripts
+!keycloak/bootstrap.sh.bak
+
+# Local mkcert dev certificates (per-machine, never commit)
+traefik/certs/

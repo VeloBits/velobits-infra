@@ -1,8 +1,21 @@
+# Dev Keycloak routes for local VeloBits services.
+#
+# Docker compose publishes the keycloak service at 8080.
+# Services live on the same Docker network as Traefik.
+#
+# Higher priority wins when both routers could match.
+# Prod equivalents (auth.velobits.dev) are added at production deploy.
+
 http:
   routers:
     keycloak:
-      rule: Host(`auth.velobits.dev`)
+      # Temporary domain until velobits.dev DNS is live - drop the second
+      # clause at cutover (see docs/octopus-deployment.md).
+      rule: Host(`auth.velobits.dev`) || Host(`auth-dev.velobits.dev`) || Host(`auth-dev.saurabh-yadav.me`)
       service: keycloak
+      entryPoints:
+        - websecure
+      tls: {}
 
   services:
     keycloak:

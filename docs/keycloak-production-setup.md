@@ -16,9 +16,10 @@ that calls `bootstrap.sh` after Keycloak is healthy. It handles:
 - Google and GitHub OAuth IdP provisioning
 - `account-svc` service-account client provisioning (granted `manage-users` +
   `view-users` from `realm-management`), when `KEYCLOAK_SERVICE_ACCOUNT_SECRET` is set
-- Backchannel-logout sync: every client that declares `backchannel.logout.url`
-  in the realm export JSON gets that config re-applied via the Admin API on
-  every run (no env vars — the export is the source of truth)
+- Client-config sync: every client in the realm export JSON gets its redirect
+  URIs, webOrigins, post-logout URIs, backchannel-logout attributes, and
+  `frontchannelLogout` re-applied via the Admin API on every run (no env vars —
+  the export is the source of truth; secrets are never touched)
 
 **None of this runs automatically in production.** Production Keycloak must be
 bootstrapped manually (or via CI) using the same script.

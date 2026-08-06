@@ -23,12 +23,13 @@
 #                                $KEYCLOAK_URL/realms/master probe (e.g. the KC 26
 #                                management port: http://keycloak:9000/health/ready)
 #
-# Backchannel logout is NOT configured via env: the realm export JSON is the
-# source of truth. Every client that declares `backchannel.logout.url` in its
-# attributes gets that config (re-)applied via the Admin API on every run, so
-# JSON edits propagate to realms that already exist (realm import only runs on
-# first boot). To onboard a new app, add its client to the realm export with
-# its own backchannel.logout.url.
+# Client wiring (redirect URIs, webOrigins, post-logout URIs, backchannel
+# logout, frontchannelLogout) is NOT configured via env: the realm export JSON
+# is the source of truth. Every client in the export gets those fields
+# (re-)applied via the Admin API on every run, so JSON edits propagate to
+# realms that already exist (realm import only runs on first boot). To onboard
+# a new app, add its client to the realm export with its own URIs and
+# backchannel.logout.url.
 #
 # Exit codes:
 #   0  success / already bootstrapped
@@ -315,65 +316,72 @@ else
   echo "[bootstrap] KEYCLOAK_SERVICE_ACCOUNT_SECRET not set - skipping service account setup"
 fi
 
-# ── Sync backchannel logout config from the realm export (source of truth) ──
+# ── Sync client config from the realm export (source of truth) ──────────────
 # Realm import only runs when the realm does NOT exist yet, so edits to the
 # export JSON never reach an already-provisioned realm on their own. This step
-# closes that gap: for EVERY client that declares `backchannel.logout.url` in
-# the export, re-apply its backchannel attributes + frontchannelLogout to the
-# live client via the Admin API. Scales to N apps - one client entry per app.
-# IMPORTANT: the attribute belongs on each app's Authorization Code + PKCE
-# client (the one that issues user sessions), NOT on service-account clients.
-# Keycloak only calls backchannelLogoutUrl on the client that authenticated
-# the user; client_credentials clients never have user sessions.
+# closes that gap: for EVERY client in the export that exists in the realm,
+# re-apply the declarative wiring via the Admin API:
+#   - redirectUris, webOrigins
+#   - attributes: post.logout.redirect.uris + backchannel.logout.*
+#   - frontchannelLogout
+# Secrets and everything else on the live client are left untouched.
+# Scales to N apps - one client entry per app, edit JSON + redeploy to change.
+# IMPORTANT: backchannel.logout.url belongs on each app's Authorization Code +
+# PKCE client (the one that issues user sessions), NOT on service-account
+# clients - Keycloak only calls it on the client that authenticated the user.
 if [ -f "$REALM_EXPORT_PATH" ]; then
-  BACKCHANNEL_CLIENT_IDS=$(python3 -c "
+  SYNC_CLIENT_IDS=$(python3 -c "
 import json, sys
 export = json.load(open(sys.argv[1]))
 for c in export.get('clients', []):
-    if c.get('attributes', {}).get('backchannel.logout.url'):
+    if c.get('clientId'):
         print(c['clientId'])" "$REALM_EXPORT_PATH" 2>/dev/null || true)
 
-  for BC_CLIENT_ID in $BACKCHANNEL_CLIENT_IDS; do
-    echo "[bootstrap] syncing backchannel logout config on client '$BC_CLIENT_ID' ..."
-    BC_CLIENT_LIST=$(curl -s \
+  for SYNC_CLIENT_ID in $SYNC_CLIENT_IDS; do
+    SYNC_CLIENT_LIST=$(curl -s \
       -H "Authorization: Bearer $ADMIN_TOKEN" \
-      "$KEYCLOAK_URL/admin/realms/$KEYCLOAK_REALM/clients?clientId=$BC_CLIENT_ID&max=1")
-    BC_UUID=$(echo "$BC_CLIENT_LIST" | python3 -c \
+      "$KEYCLOAK_URL/admin/realms/$KEYCLOAK_REALM/clients?clientId=$SYNC_CLIENT_ID&max=1")
+    SYNC_UUID=$(echo "$SYNC_CLIENT_LIST" | python3 -c \
       "import json,sys; c=json.load(sys.stdin); print(c[0]['id'] if c else '')" 2>/dev/null || true)
 
-    if [ -z "$BC_UUID" ]; then
-      echo "[bootstrap] WARNING: client '$BC_CLIENT_ID' not found in realm - backchannel logout not synced"
+    if [ -z "$SYNC_UUID" ]; then
+      echo "[bootstrap] WARNING: client '$SYNC_CLIENT_ID' not found in realm - config not synced"
       continue
     fi
 
     CLIENT_REP=$(curl -s \
       -H "Authorization: Bearer $ADMIN_TOKEN" \
-      "$KEYCLOAK_URL/admin/realms/$KEYCLOAK_REALM/clients/$BC_UUID")
+      "$KEYCLOAK_URL/admin/realms/$KEYCLOAK_REALM/clients/$SYNC_UUID")
     PATCHED_REP=$(echo "$CLIENT_REP" | python3 -c "
 import json, sys
 rep = json.load(sys.stdin)
 export = json.load(open(sys.argv[1]))
 src = next(c for c in export['clients'] if c.get('clientId') == sys.argv[2])
-for key in ('backchannel.logout.url',
+for field in ('redirectUris', 'webOrigins'):
+    if field in src:
+        rep[field] = src[field]
+for key in ('post.logout.redirect.uris',
+            'backchannel.logout.url',
             'backchannel.logout.session.required',
             'backchannel.logout.revoke.offline.tokens'):
     if key in src.get('attributes', {}):
         rep.setdefault('attributes', {})[key] = src['attributes'][key]
 # Back-channel SLO is server-to-server; front-channel needs a browser and
 # breaks on server-initiated logouts (admin API / token revocation), so it
-# stays disabled unless the export says otherwise.
-rep['frontchannelLogout'] = src.get('frontchannelLogout', False)
-print(json.dumps(rep))" "$REALM_EXPORT_PATH" "$BC_CLIENT_ID")
+# stays disabled on backchannel clients unless the export says otherwise.
+if 'frontchannelLogout' in src or 'backchannel.logout.url' in src.get('attributes', {}):
+    rep['frontchannelLogout'] = src.get('frontchannelLogout', False)
+print(json.dumps(rep))" "$REALM_EXPORT_PATH" "$SYNC_CLIENT_ID")
     curl -sS -o /dev/null -X PUT \
       -H "Authorization: Bearer $ADMIN_TOKEN" \
       -H "Content-Type: application/json" \
       -d "$PATCHED_REP" \
-      "$KEYCLOAK_URL/admin/realms/$KEYCLOAK_REALM/clients/$BC_UUID" \
-      || echo "[bootstrap] backchannel logout sync failed for '$BC_CLIENT_ID' (non-fatal)"
-    echo "[bootstrap] backchannel logout config synced for '$BC_CLIENT_ID'"
+      "$KEYCLOAK_URL/admin/realms/$KEYCLOAK_REALM/clients/$SYNC_UUID" \
+      || echo "[bootstrap] client config sync failed for '$SYNC_CLIENT_ID' (non-fatal)"
+    echo "[bootstrap] client config synced for '$SYNC_CLIENT_ID'"
   done
 else
-  echo "[bootstrap] realm export '$REALM_EXPORT_PATH' not found - skipping backchannel logout sync"
+  echo "[bootstrap] realm export '$REALM_EXPORT_PATH' not found - skipping client config sync"
 fi
 
 echo "[bootstrap] done"

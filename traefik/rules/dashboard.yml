@@ -1,0 +1,8 @@
+http:
+  routers:
+    dashboard:
+      rule: Host(`traefik.velobits.dev`) || Host(`traefik.saurabh-yadav.me`)
+      service: api@internal
+      entryPoints:
+        - websecure
+      tls: {}

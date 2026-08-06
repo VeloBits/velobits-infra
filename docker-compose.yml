@@ -22,28 +22,28 @@ services:
 
   # ══════════════════════════════════════════════════════════════════════════
   # TRAEFIK - edge reverse proxy for all *.velobits.dev subdomains.
-  # Owns external port :80. Dev routes live in traefik/rules/.
+  # Owns external ports :80 (redirect) and :443 (TLS). Dev routes live in
+  # traefik/rules/; static config in traefik/traefik.yml (mounted).
   # ══════════════════════════════════════════════════════════════════════════
 
   traefik:
     image: traefik:v3.2
     container_name: velobits-traefik
     restart: unless-stopped
-    command:
-      - --api.dashboard=true
-      - --api.insecure=true
-      # File provider avoids Docker API compatibility issues on newer daemons.
-      - --providers.file.directory=/etc/traefik/rules
-      - --providers.file.watch=true
-      - --entrypoints.web.address=:80
-      - --log.level=INFO
+    # Static config lives in traefik/traefik.yml (mounted below) — no CLI flags,
+    # so that file is the single source of truth. rules/ is watched, but Docker
+    # Desktop on Windows often drops bind-mount change events, so after editing
+    # ANY traefik file run: docker restart velobits-traefik
     ports:
-      - "80:80"
-      - "127.0.0.1:8090:8080"   # dashboard, localhost-only
+      - "80:80"    # redirects to :443 (.dev is HSTS-preloaded)
+      - "443:443"
     extra_hosts:
       - "host.docker.internal:host-gateway"
     volumes:
+      - ./traefik/traefik.yml:/etc/traefik/traefik.yml:ro
       - ./traefik/rules:/etc/traefik/rules:ro
+      # mkcert dev cert (git-ignored) — generate per machine, see traefik/rules/tls.yml.
+      - ./traefik/certs:/etc/traefik/certs:ro
     networks:
       - velobits-net
       - velobits-proxy-net
@@ -132,10 +132,13 @@ services:
       KC_DB_URL: jdbc:postgresql://keycloak-dev-db:5432/keycloak_dev_db
       KC_DB_USERNAME: ${KEYCLOAK_DEV_DB_USER:?set KEYCLOAK_DEV_DB_USER in .env}
       KC_DB_PASSWORD: ${KEYCLOAK_DEV_DB_PASSWORD:?set KEYCLOAK_DEV_DB_PASSWORD in .env}
-      # localhost makes OIDC discovery return http://localhost:8080 URLs, which
-      # the browser can reach via the published port 8080 without /etc/hosts.
-      # Switch to auth-dev.velobits.dev once you add the /etc/hosts entry (see README).
-      KC_HOSTNAME: localhost
+      # KC_HOSTNAME deliberately unset: with KC_HOSTNAME_STRICT=false Keycloak
+      # derives the hostname from each request (X-Forwarded-* via Traefik), so
+      # https://auth-dev.velobits.dev, https://auth-dev.saurabh-yadav.me AND
+      # direct http://localhost:8080 all get self-consistent URLs/issuers.
+      # NOTE: the OIDC issuer therefore varies by host — point browser and
+      # backend at the SAME base URL or token validation will fail on issuer.
+      # Prod pins KC_HOSTNAME instead (docker-compose-prod.yml / octopus).
       KC_HOSTNAME_STRICT: "false"
       KC_HTTP_ENABLED: "true"
       KC_PROXY_HEADERS: xforwarded
@@ -240,11 +243,9 @@ networks:
   velobits-net:
     name: velobits-net
     driver: bridge
-    attachable: true
   velobits-proxy-net:
     name: velobits-proxy-net
-    driver: bridge
-    attachable: true
+    external: true
 
 # ── Volumes ───────────────────────────────────────────────────────────────────
 volumes:

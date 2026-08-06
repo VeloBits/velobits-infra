@@ -1,0 +1,28 @@
+# Dev Traefik routes for Velobits-Website (../Velobits-Website, `docker compose --profile dev up`).
+#
+# Velobits-Website's runs own server (host :3000) is the single entry point for the
+# dashboard: apps/dashboard hardcodes same-origin fetch(`/api${path}`), and that
+# nginx strips /api and forwards to the API (plus /edge/ -> edge worker, and the
+# to the Vite container directly. It is not on velobits-proxy-net, hence
+# host.docker.internal.
+#
+http:
+  routers:
+    # Website + same-origin /, via Velobits-Website's own server.
+    velobits-website-dev-app:
+      rule: "Host(`velobits.dev`) || Host(`velobits.saurabh-yadav.me`)"
+      service: velobits-website-dev-svc
+      entryPoints:
+        - websecure
+      tls: {}
+
+  services:
+    velobits-website-dev-svc:
+      loadBalancer:
+        healthCheck:
+          path: /
+          interval: 10s
+          timeout: 3s
+        servers:
+          - url: "http://velobits-website-dev:3000"
+          - url: "http://host.docker.internal:3000"

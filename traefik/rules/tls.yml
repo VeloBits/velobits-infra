@@ -1,0 +1,23 @@
+# Dev TLS certificate for the websecure (:443) entrypoint.
+#
+# Generated with mkcert (locally-trusted, NOT for production):
+#   mkcert -cert-file traefik/certs/velobits-dev.crt -key-file traefik/certs/velobits-dev.key \
+#     "*.velobits.dev" velobits.dev "*.toggleflow.velobits.dev" \
+#     "*.saurabh-yadav.me" saurabh-yadav.me "*.toggleflow.saurabh-yadav.me" \
+#     localhost 127.0.0.1
+#
+# traefik/certs/ is git-ignored — each dev machine generates its own cert
+# (mkcert roots are per-machine anyway). Certs are mounted at /etc/traefik/certs.
+# Set as the default store certificate so SNI mismatches don't fall back to
+# Traefik's self-signed cert.
+
+tls:
+  certificates:
+    - certFile: /etc/traefik/certs/velobits-dev.crt
+      keyFile: /etc/traefik/certs/velobits-dev.key
+
+  stores:
+    default:
+      defaultCertificate:
+        certFile: /etc/traefik/certs/velobits-dev.crt
+        keyFile: /etc/traefik/certs/velobits-dev.key

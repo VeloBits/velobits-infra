@@ -140,7 +140,7 @@ own variable set — scope every value to its environment. Mark 🔒 rows
 | Variable | Value | 🔒 |
 |---|---|---|
 | `COMPOSE_PROJECT_NAME` | `velobits-dev` — keep it stable (prefixes volume/label names) | |
-| `KC_HOSTNAME` | `auth-dev.velobits.dev` | |
+| `KC_HOSTNAME` | `auth-dev.velobits.dev` — while velobits.dev DNS isn't live, use the temp domain `auth-dev.saurabh-yadav.me` instead (a temp domain only changes this variable, the `traefik/rules/*.yml` Host clauses, and the dev realm-export URIs) | |
 | `KEYCLOAK_DEV_ADMIN_USER` | `admin` (optional, default) | |
 | `KEYCLOAK_DEV_ADMIN_PASSWORD` | `openssl rand -base64 32` | 🔒 |
 | `KEYCLOAK_DEV_DB_URL` | JDBC form of the Aiven URI, **dev database**: `jdbc:postgresql://<host>:<port>/keycloak_dev?sslmode=require` | |

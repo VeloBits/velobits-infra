@@ -10,38 +10,61 @@ http:
   routers:
     # API gateway: Kong routes /api/v1/* to backend services.
     fixmytext-dev-api:
-      rule: "Host(`api-dev.velobits.dev`)"
+      rule: "Host(`api-dev.fixmytext.velobits.dev`) || Host(`api-dev.fixmytext.saurabh-yadav.me`)"
       priority: 10
       service: fixmytext-dev-kong-svc
       entryPoints:
-        - web
+        - websecure
+      tls: {}
 
-    # Identity provider: Keycloak dev realm.
-    fixmytext-dev-auth:
-      rule: "Host(`auth-dev.velobits.dev`)"
-      priority: 10
-      service: fixmytext-dev-keycloak-svc
-      entryPoints:
-        - web
+    # ---------------- Front starts here
 
-    # Content app: static pages, SEO tool pages, share pages, marketing root.
+    # Router app: static pages, SEO tool pages, share pages, marketing root.
     # Traefik v3 requires exactly one argument per PathPrefix matcher - the
     # v2 multi-arg form is rejected and silently disables the router.
+    fixmytext-dev-router:
+      rule: "(Host(`fixmytext-dev.velobits.dev`) || Host(`fixmytext-dev.saurabh-yadav.me`)) && (Path(`/`) || PathPrefix(`/tools`) || PathPrefix(`/about`) || PathPrefix(`/pricing`) || PathPrefix(`/share`))"
+      priority: 20
+      service: fixmytext-dev-router-svc
+      entryPoints:
+        - websecure
+      tls: {}
+
+    # Editor app: static pages, SEO tool pages, share pages, marketing root.
+    fixmytext-dev-editor:
+      rule: "(Host(`fixmytext-dev-editor.velobits.dev`) || Host(`fixmytext-dev-editor.saurabh-yadav.me`)) && (Path(`/`) || PathPrefix(`/tools`) || PathPrefix(`/about`) || PathPrefix(`/pricing`) || PathPrefix(`/share`))"
+      priority: 20
+      service: fixmytext-editor-dev-svc
+      entryPoints:
+        - websecure
+      tls: {}
+
+    # Analytics app: static pages, SEO tool pages, share pages, marketing root.
+    fixmytext-dev-analytics:
+      rule: "(Host(`fixmytext-dev-analytics.velobits.dev`) || Host(`fixmytext-dev-analytics.saurabh-yadav.me`)) && (Path(`/`) || PathPrefix(`/tools`) || PathPrefix(`/about`) || PathPrefix(`/pricing`) || PathPrefix(`/share`))"
+      priority: 20
+      service: fixmytext-analytics-dev-svc
+      entryPoints:
+        - websecure
+      tls: {}
+
+    # Content app: static pages, SEO tool pages, share pages, marketing root.
     fixmytext-dev-content:
-      rule: "Host(`develop-fixmytext.velobits.dev`) && (Path(`/`) || PathPrefix(`/tools`) || PathPrefix(`/about`) || PathPrefix(`/pricing`) || PathPrefix(`/share`))"
+      rule: "(Host(`fixmytext-dev-content.velobits.dev`) || Host(`fixmytext-dev-content.saurabh-yadav.me`)) && (Path(`/`) || PathPrefix(`/tools`) || PathPrefix(`/about`) || PathPrefix(`/pricing`) || PathPrefix(`/share`))"
       priority: 20
       service: fixmytext-dev-content-svc
       entryPoints:
-        - web
+        - websecure
+      tls: {}
 
-    # Web app: everything not claimed by the content router above
-    # (priority 20 beats 10), including /app/*.
-    fixmytext-dev-web:
-      rule: "Host(`develop-fixmytext.velobits.dev`)"
-      priority: 10
-      service: fixmytext-dev-web-svc
+    # Shell app: static pages, SEO tool pages, share pages, marketing root.
+    fixmytext-dev-shell:
+      rule: "(Host(`fixmytext-dev-shell.velobits.dev`) || Host(`fixmytext-dev-shell.saurabh-yadav.me`)) && (Path(`/`) || PathPrefix(`/tools`) || PathPrefix(`/about`) || PathPrefix(`/pricing`) || PathPrefix(`/share`))"
+      priority: 20
+      service: fixmytext-shell-dev-svc
       entryPoints:
-        - web
+        - websecure
+      tls: {}
 
   services:
     fixmytext-dev-kong-svc:
@@ -49,17 +72,27 @@ http:
         servers:
           - url: "http://kong:8000"
 
-    fixmytext-dev-keycloak-svc:
+    fixmytext-dev-router-svc:
       loadBalancer:
         servers:
-          - url: "http://keycloak-dev:8080"
+          - url: "http://fixmytext-router:3100"
+
+    fixmytext-editor-dev-svc:
+      loadBalancer:
+        servers:
+          - url: "http://host.docker.internal:3101"
+
+    fixmytext-analytics-dev-svc:
+      loadBalancer:
+        servers:
+          - url: "http://host.docker.internal:3102"
 
     fixmytext-dev-content-svc:
       loadBalancer:
         servers:
           - url: "http://host.docker.internal:3103"
 
-    fixmytext-dev-web-svc:
+    fixmytext-shell-dev-svc:
       loadBalancer:
         servers:
-          - url: "http://host.docker.internal:3100"
+          - url: "http://host.docker.internal:3104"

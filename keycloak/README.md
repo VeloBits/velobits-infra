@@ -10,7 +10,7 @@ Identity provider for the FixMyText microbackend. Keycloak is active â€” th
 |---|---|
 | `realm-export-dev.json` | Dev realm definition: `Velobits`, clients, roles, token lifespans |
 | `realm-export-prod.json` | Prod realm definition: `Velobits-Prod` â€” imported during production provisioning |
-| `bootstrap.sh` | Idempotent post-boot helper: realm import, SMTP + social IdPs (Google, GitHub), `account-svc` service account (with `manage-users`/`view-users` roles), and backchannel-logout sync from the realm export (per-client `backchannel.logout.url`, re-applied via Admin API on every run) |
+| `bootstrap.sh` | Idempotent post-boot helper: realm import, SMTP + social IdPs (Google, GitHub), `account-svc` service account (with `manage-users`/`view-users` roles), and client-config sync from the realm export (redirect URIs, webOrigins, post-logout URIs, backchannel logout, `frontchannelLogout` — re-applied via Admin API on every run; secrets untouched) |
 
 ## Realms at a glance
 
@@ -70,9 +70,11 @@ the realm export JSON - `http://kong:8000/api/v1/auth/backchannel-logout` on
 `local-velobits` in dev, `https://api.velobits.dev/api/v1/auth/backchannel-logout`
 on `fixmytext` in prod. Keycloak performs single logout via **back-channel SLO**
 (server-to-server POST to that URL). Because `--import-realm` skips realms that
-already exist, `bootstrap.sh` re-applies these attributes to the live clients on
-every run, so editing the JSON is all it takes to change the URL or onboard a
-new app (add its client with its own `backchannel.logout.url`).
+already exist, `bootstrap.sh` re-applies these attributes - along with each
+client's redirect URIs, webOrigins, and post-logout URIs - to the live clients
+on every run, so editing the JSON is all it takes to change a URL, move domains,
+or onboard a new app (add its client with its own URIs and
+`backchannel.logout.url`).
 
 These clients also set `frontchannelLogout: false`: server-initiated logouts
 (Admin API / token revocation) have no browser to load the front-channel iframe.

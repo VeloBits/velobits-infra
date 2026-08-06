@@ -163,11 +163,9 @@ networks:
   velobits-net:
     name: velobits-net
     driver: bridge
-    attachable: true
   velobits-proxy-net:
     name: velobits-proxy-net
-    driver: bridge
-    attachable: true
+    external: true
 
 # ── Volumes ───────────────────────────────────────────────────────────────────
 volumes:

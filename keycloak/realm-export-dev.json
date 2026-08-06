@@ -42,12 +42,22 @@
       "standardFlowEnabled": true,
       "directAccessGrantsEnabled": true,
       "serviceAccountsEnabled": false,
-      "redirectUris": ["http://localhost:5173/*", "http://localhost:3200/*"],
-      "webOrigins": ["http://localhost:5173", "http://localhost:3200"],
+      "redirectUris": [
+        "http://localhost:5173/*",
+        "http://localhost:3200/*",
+        "https://toggleflow-dev.velobits.dev/*",
+        "https://toggleflow-dev.saurabh-yadav.me/*"
+      ],
+      "webOrigins": [
+        "http://localhost:5173",
+        "http://localhost:3200",
+        "https://toggleflow-dev.velobits.dev",
+        "https://toggleflow-dev.saurabh-yadav.me"
+      ],
       "attributes": {
         "pkce.code.challenge.method": "S256",
         "access.token.lifespan": "300",
-        "post.logout.redirect.uris": "http://localhost:5173/##http://localhost:5173/login##http://localhost:3200/##http://localhost:3200/login"
+        "post.logout.redirect.uris": "http://localhost:5173/##http://localhost:5173/login##http://localhost:3200/##http://localhost:3200/login##https://toggleflow-dev.velobits.dev/##https://toggleflow-dev.velobits.dev/login##https://toggleflow-dev.saurabh-yadav.me/##https://toggleflow-dev.saurabh-yadav.me/login"
       },
       "protocolMappers": [
         {
@@ -92,16 +102,20 @@
         "http://localhost:3100/auth/silent-callback.html",
         "http://develop-fixmytext.velobits.dev/auth/callback",
         "http://develop-fixmytext.velobits.dev/auth/silent-callback",
-        "http://develop-fixmytext.velobits.dev/auth/silent-callback.html"
+        "http://develop-fixmytext.velobits.dev/auth/silent-callback.html",
+        "http://develop-fixmytext.saurabh-yadav.me/auth/callback",
+        "http://develop-fixmytext.saurabh-yadav.me/auth/silent-callback",
+        "http://develop-fixmytext.saurabh-yadav.me/auth/silent-callback.html"
       ],
       "webOrigins": [
         "http://develop-fixmytext.velobits.dev",
+        "http://develop-fixmytext.saurabh-yadav.me",
         "http://localhost:3100"
       ],
       "attributes": {
         "pkce.code.challenge.method": "S256",
         "access.token.lifespan": "300",
-        "post.logout.redirect.uris": "http://localhost:3100/##http://develop-fixmytext.velobits.dev/##http://localhost:3100/login##http://develop-fixmytext.velobits.dev/login",
+        "post.logout.redirect.uris": "http://localhost:3100/##http://develop-fixmytext.velobits.dev/##http://localhost:3100/login##http://develop-fixmytext.velobits.dev/login##http://develop-fixmytext.saurabh-yadav.me/##http://develop-fixmytext.saurabh-yadav.me/login",
         "backchannel.logout.url": "http://kong:8000/api/v1/auth/backchannel-logout",
         "backchannel.logout.session.required": "true",
         "backchannel.logout.revoke.offline.tokens": "false"
@@ -134,7 +148,9 @@
         "http://localhost:3100",
         "http://localhost:3100/*",
         "http://develop-fixmytext.velobits.dev",
-        "http://develop-fixmytext.velobits.dev/*"
+        "http://develop-fixmytext.velobits.dev/*",
+        "http://develop-fixmytext.saurabh-yadav.me",
+        "http://develop-fixmytext.saurabh-yadav.me/*"
       ],
       "attributes": {
         "access.token.lifespan": "300"
