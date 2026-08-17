@@ -21,7 +21,7 @@ http:
         - websecure
       tls: {}
 
-    # Direct control-plane API for SDKs / curl (bearer tokens, audience toggleflow-api).
+    # Direct control-plane API for SDKs / curl (bearer tokens, audience toggleflow-backend).
     toggleflow-dev-api:
       rule: "Host(`api-dev.toggleflow.velobits.dev`)"
       service: toggleflow-dev-api-svc

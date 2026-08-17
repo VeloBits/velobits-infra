@@ -39,8 +39,9 @@ Same as Dev except:
 
 | Client | Realm | Type | Flow | Used by |
 |---|---|---|---|---|
-| `local-velobits` | Dev | Public (PKCE) | Authorization Code | React SPA login/signup |
-| `fixmytext` | Prod | Public (PKCE) | Authorization Code | React SPA (prod) |
+| `fixmytext` | Both | Public (PKCE) | Authorization Code | FixMyText React SPA login/signup |
+| `toggleflow` | Dev | Public (PKCE) | Authorization Code | ToggleFlow dashboard SPA |
+| `toggleflow-backend` | Dev | Bearer-only audience | — | ToggleFlow control-plane API |
 | `fixmytext-backend` | Both | Confidential (service account) | Client credentials | Admin API (user creation, verification email) |
 | `develop-chat` / `chat` | Dev / Prod | Public (PKCE) | â€” (disabled) | Disabled placeholder for a future VeloBits product (Chat) |
 | `develop-notes` / `notes` | Dev / Prod | Public (PKCE) | â€” (disabled) | Disabled placeholder for a future VeloBits product (Notes) |
@@ -50,7 +51,7 @@ The `develop-chat`/`develop-notes` (dev) and `chat`/`notes` (prod) clients are
 active flows yet â€” standard flow is disabled and they exist only to claim the
 client IDs and redirect URIs ahead of time.
 
-#### `local-velobits` redirect URIs
+#### `fixmytext` (dev) redirect URIs
 
 The dev frontend client registers both the Vite (`/auth/callback`) and Next.js
 (`/app/auth/callback`) callback paths plus the silent-renew callback, on both the
@@ -67,7 +68,7 @@ localhost and `velobits.dev` hosts:
 
 Each app's frontend (PKCE) client declares its own `backchannel.logout.url` in
 the realm export JSON - `http://kong:8000/api/v1/auth/backchannel-logout` on
-`local-velobits` in dev, `https://api.velobits.dev/api/v1/auth/backchannel-logout`
+`fixmytext` in dev, `https://api.velobits.dev/api/v1/auth/backchannel-logout`
 on `fixmytext` in prod. Keycloak performs single logout via **back-channel SLO**
 (server-to-server POST to that URL). Because `--import-realm` skips realms that
 already exist, `bootstrap.sh` re-applies these attributes - along with each

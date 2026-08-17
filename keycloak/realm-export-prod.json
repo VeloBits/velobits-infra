@@ -93,40 +93,6 @@
       "attributes": {
         "access.token.lifespan": "300"
       }
-    },
-    {
-      "clientId": "chat",
-      "name": "Chat Production (placeholder for future Velobits product)",
-      "enabled": false,
-      "publicClient": true,
-      "standardFlowEnabled": false,
-      "redirectUris": [
-        "https://chat.velobits.dev/auth/callback"
-      ],
-      "webOrigins": [
-        "https://chat.velobits.dev"
-      ],
-      "directAccessGrantsEnabled": false,
-      "attributes": {
-        "pkce.code.challenge.method": "S256"
-      }
-    },
-    {
-      "clientId": "notes",
-      "name": "Notes Production (placeholder for future Velobits product)",
-      "enabled": false,
-      "publicClient": true,
-      "standardFlowEnabled": false,
-      "redirectUris": [
-        "https://notes.velobits.dev/auth/callback"
-      ],
-      "webOrigins": [
-        "https://notes.velobits.dev"
-      ],
-      "directAccessGrantsEnabled": false,
-      "attributes": {
-        "pkce.code.challenge.method": "S256"
-      }
     }
   ],
   "smtpServer": {},
