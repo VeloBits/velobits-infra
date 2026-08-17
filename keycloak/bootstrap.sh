@@ -345,7 +345,21 @@ for c in export.get('clients', []):
       "import json,sys; c=json.load(sys.stdin); print(c[0]['id'] if c else '')" 2>/dev/null || true)
 
     if [ -z "$SYNC_UUID" ]; then
-      echo "[bootstrap] WARNING: client '$SYNC_CLIENT_ID' not found in realm - config not synced"
+      # Client missing (e.g. added/renamed in the export after the realm was
+      # first imported): create it from the full export representation.
+      echo "[bootstrap] client '$SYNC_CLIENT_ID' not found in realm - creating from export"
+      CREATE_REP=$(python3 -c "
+import json, sys
+export = json.load(open(sys.argv[1]))
+src = next(c for c in export['clients'] if c.get('clientId') == sys.argv[2])
+print(json.dumps(src))" "$REALM_EXPORT_PATH" "$SYNC_CLIENT_ID")
+      curl -sS -o /dev/null -X POST \
+        -H "Authorization: Bearer $ADMIN_TOKEN" \
+        -H "Content-Type: application/json" \
+        -d "$CREATE_REP" \
+        "$KEYCLOAK_URL/admin/realms/$KEYCLOAK_REALM/clients" \
+        || { echo "[bootstrap] client create failed for '$SYNC_CLIENT_ID' (non-fatal)"; continue; }
+      echo "[bootstrap] client '$SYNC_CLIENT_ID' created"
       continue
     fi
 
