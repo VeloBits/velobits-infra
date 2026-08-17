@@ -26,5 +26,5 @@ http:
     velobits-prod-keycloak-svc:
       loadBalancer:
         servers:
-          # Container name of the baked Keycloak service on velobits-net.
+          # Container name of the baked Keycloak service on velobits-proxy-net.
           - url: "http://velobits-auth:8080"
