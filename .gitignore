@@ -10,3 +10,10 @@ Thumbs.db
 .vscode/
 
 .claude*
+# local backup copies (never commit)
+*.bak
+.swarm*
+*.db
+
+# Local mkcert dev certificates (per-machine, never commit)
+traefik/certs/
