@@ -79,8 +79,8 @@ ADMIN_TOKEN=$(curl -fsS -X POST \
   -H "Content-Type: application/x-www-form-urlencoded" \
   -d "grant_type=password" \
   -d "client_id=admin-cli" \
-  -d "username=$KEYCLOAK_ADMIN" \
-  -d "password=$KEYCLOAK_ADMIN_PASSWORD" \
+  --data-urlencode "username=$KEYCLOAK_ADMIN" \
+  --data-urlencode "password=$KEYCLOAK_ADMIN_PASSWORD" \
   "$KEYCLOAK_URL/realms/master/protocol/openid-connect/token" \
   | python3 -c "import json,sys; print(json.load(sys.stdin)['access_token'])" 2>/dev/null) || {
   echo "[bootstrap] FATAL: admin token request failed" >&2
