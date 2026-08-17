@@ -199,12 +199,15 @@ repo is just another identity + its GitHub variables, no new account.
    Package Publisher, or Space Manager while solo).
 2. On the service account → **OIDC Identities → Add** (one per repo):
    - Issuer: `https://token.actions.githubusercontent.com`
-   - Subject: `repo:VeloBits/velobits-infra:ref:*`
+   - Subject: `repo:VeloBits@146367091/velobits-infra@1308719371:ref:*`
      (wildcard covers *any branch*, which this pipeline needs; supported since
-     Octopus 2024.1 — Cloud is always current. Future repos each get their own
-     identity, e.g. `repo:VeloBits/fixmytext-backend:ref:*` — avoid a single
-     `repo:VeloBits/*` catch-all so a rogue workflow in one repo can't be
-     broadened accidentally.)
+     Octopus 2024.1 — Cloud is always current. GitHub embeds the immutable
+     org and repo IDs in the subject, so a plain
+     `repo:VeloBits/velobits-infra:ref:*` will NOT match — find a repo's IDs
+     with `gh api repos/VeloBits/<repo> --jq '.id,.owner.id'` or copy the
+     presented subject from a failed login's error message. Future repos each
+     get their own identity — avoid a single `repo:VeloBits*` catch-all so a
+     rogue workflow in one repo can't be broadened accidentally.)
 3. Copy the service account **ID** shown on that page.
 4. GitHub → **Organization** Settings → Secrets and variables → Actions →
    **Variables** (org-level, so every VeloBits repo inherits them —
@@ -390,7 +393,7 @@ Practices this setup enforces or expects:
 |---|---|
 | Task log: `unbound Octopus variables` + token names | Add the listed variables (Part 4), scoped to the failing environment; redeploy the same release. |
 | `create-release` can't find channel | Channel names must match the workflow exactly: `Release`, `Feature branches`. |
-| Login step: `Access denied` / no token exchanged | OIDC subject must be `repo:VeloBits/velobits-infra:ref:*` (exact org/repo case); check service account permissions. |
+| Login step: `Could not find matching identity` / `Access denied` | The registered OIDC subject must match what GitHub presents, including the immutable IDs: `repo:VeloBits@146367091/velobits-infra@1308719371:ref:*` (the error message prints the exact presented subject — copy from there); check service account permissions. |
 | Target unhealthy in Octopus | `sudo systemctl status "Tentacle: velobits"` on the VM; polling needs outbound 10943 open (default-open on Oracle egress). |
 | Keycloak never healthy | `docker logs keycloak-dev` (dev) / `docker logs velobits-auth` (prod) — usually a bad DB credential after rotation: rotate in the Aiven console AND the Octopus variable together, then redeploy. |
 | Keycloak can't reach the database | Aiven **allowed IP addresses** must include the VM's public IP; URL must be the JDBC form with `sslmode=require` and the right per-environment database name; check the Aiven service is powered on (free services may be shut down if unused for an extended period). |
