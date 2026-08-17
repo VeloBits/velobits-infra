@@ -237,6 +237,14 @@ curl -fsSL https://get.docker.com | sudo sh
 docker compose version   # want >= 2.24
 ```
 
+Both stacks declare the shared `velobits-proxy-net` network as `external`
+(product stacks join it too). `deploy.sh` creates it if missing, but you can
+also create it up front:
+
+```bash
+sudo docker network create velobits-proxy-net
+```
+
 **2. Install the Tentacle** (Ubuntu/Debian,
 [official docs](https://octopus.com/docs/infrastructure/deployment-targets/tentacle/linux)):
 

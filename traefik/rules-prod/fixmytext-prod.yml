@@ -1,0 +1,30 @@
+# Production Traefik routes for the FixMyText API (api.fixmytext.velobits.dev).
+#
+# The FixMyText backend prod stack (separate repo) must, on this host:
+#   1. join the shared `velobits-proxy-net` network (declared external there), and
+#   2. run its Kong gateway with container_name `kong-prod` listening on :8000
+#      (adjust the service URL below if the backend stack names it differently).
+# Until that stack is up, requests to this hostname return 502 — harmless.
+#
+# DNS: api.fixmytext.velobits.dev must point at this host BEFORE this file is
+# deployed — Traefik requests the Let's Encrypt cert as soon as the router
+# loads, and issuance fails (then retries with backoff) while DNS points
+# elsewhere. Note this is a second-level subdomain: a `*.velobits.dev` record
+# does NOT cover it; it needs its own A record (or `*.fixmytext.velobits.dev`).
+
+http:
+  routers:
+    fixmytext-prod-api:
+      rule: "Host(`api.fixmytext.velobits.dev`)"
+      priority: 10
+      entryPoints:
+        - websecure
+      service: fixmytext-prod-kong-svc
+      tls:
+        certResolver: le
+
+  services:
+    fixmytext-prod-kong-svc:
+      loadBalancer:
+        servers:
+          - url: "http://kong-prod:8000"
