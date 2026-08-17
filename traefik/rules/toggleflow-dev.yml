@@ -1,0 +1,41 @@
+# Dev Traefik routes for ToggleFlow (../ToggleFlow, `docker compose --profile dev up`).
+#
+# ToggleFlow's own nginx router (host :3200) is the single entry point for the
+# dashboard: apps/dashboard hardcodes same-origin fetch(`/api${path}`), and that
+# nginx strips /api and forwards to the API (plus /edge/ -> edge worker, and the
+# Vite HMR websocket). So the dashboard hostname routes to the nginx router, NOT
+# to the Vite container directly. It is not on velobits-proxy-net, hence
+# host.docker.internal.
+#
+# The control-plane API (toggleflow-api-dev) joins velobits-proxy-net (for
+# Keycloak JWKS), so Traefik reaches it by container name - no /api prefix on
+# this hostname, it serves /health and /v1/* at its root.
+
+http:
+  routers:
+    # Dashboard + same-origin /api + /edge, via ToggleFlow's nginx router.
+    toggleflow-dev-app:
+      rule: "Host(`toggleflow-dev.velobits.dev`)"
+      service: toggleflow-dev-router-svc
+      entryPoints:
+        - websecure
+      tls: {}
+
+    # Direct control-plane API for SDKs / curl (bearer tokens, audience toggleflow-api).
+    toggleflow-dev-api:
+      rule: "Host(`api-dev.toggleflow.velobits.dev`)"
+      service: toggleflow-dev-api-svc
+      entryPoints:
+        - websecure
+      tls: {}
+
+  services:
+    toggleflow-dev-router-svc:
+      loadBalancer:
+        servers:
+          - url: "http://host.docker.internal:3200"
+
+    toggleflow-dev-api-svc:
+      loadBalancer:
+        servers:
+          - url: "http://toggleflow-api-dev:4000"

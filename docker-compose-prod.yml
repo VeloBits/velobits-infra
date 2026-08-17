@@ -1,11 +1,15 @@
 # velobits-infra — PRODUCTION identity stack (auth.velobits.dev).
 #
-# Three services, nothing more:
+# Two services run on the host, nothing more:
 #   traefik        edge reverse proxy + Let's Encrypt TLS on :443
-#   keycloak-db    dedicated Postgres for the identity store
 #   velobits-auth  self-contained Keycloak image — theme jar + kc.sh build +
 #                  realm import all BAKED IN (keycloak-theme/prod.Dockerfile).
 #                  No host volume mounts, no bootstrap sidecar.
+#
+# The identity DATABASE is remote (managed Postgres — Aiven free plan): point
+# KEYCLOAK_PROD_DB_URL at it. No database container runs on this host by
+# default; the local keycloak-db service below is kept behind the `local-db`
+# profile as a fallback (docker compose --profile local-db ...).
 #
 # The dev counterpart (docker-compose.yml) bind-mounts the theme jar and runs
 # `start-dev`; here the image is an immutable artifact you build once, push to a
@@ -14,6 +18,7 @@
 # Prereqs on the host:
 #   - DNS: auth.velobits.dev -> this host's public IP (needed for ACME HTTP-01).
 #   - Ports 80 and 443 reachable from the internet.
+#   - A reachable Postgres (Aiven: use the service URI host/port, sslmode=require).
 #   - .env populated (see .env.example — the "PRODUCTION" section).
 #
 # Bring up:
@@ -62,12 +67,18 @@ services:
       - traefik-acme:/acme
     networks:
       - velobits-net
+      - velobits-proxy-net
 
   # ══════════════════════════════════════════════════════════════════════════
-  # KEYCLOAK DB — dedicated Postgres for the identity store.
+  # KEYCLOAK DB — OPTIONAL local Postgres fallback, NOT started by default.
+  # Production uses a remote managed Postgres (Aiven). Enable this only if you
+  # ever need to run the identity store locally again:
+  #   docker compose -f docker-compose-prod.yml --profile local-db up -d
+  # and point KEYCLOAK_PROD_DB_URL at jdbc:postgresql://keycloak-db:5432/keycloak_prod_db
   # ══════════════════════════════════════════════════════════════════════════
 
   keycloak-db:
+    profiles: ["local-db"]
     image: postgres:16-alpine
     container_name: keycloak-prod-db
     restart: unless-stopped
@@ -104,9 +115,12 @@ services:
     mem_limit: 1g
     # Image CMD already: start --optimized --import-realm
     environment:
-      # ── Database ──
+      # ── Database (remote — Aiven managed Postgres) ──
+      # JDBC form of the Aiven service URI, e.g.
+      #   jdbc:postgresql://pg-xxxxx-yyy.aivencloud.com:12345/defaultdb?sslmode=require
+      # Aiven enforces TLS — keep sslmode=require in the URL.
       KC_DB: postgres
-      KC_DB_URL: jdbc:postgresql://keycloak-db:5432/keycloak_prod_db
+      KC_DB_URL: ${KEYCLOAK_PROD_DB_URL:?set KEYCLOAK_PROD_DB_URL in .env}
       KC_DB_USERNAME: ${KEYCLOAK_PROD_DB_USER:?set KEYCLOAK_PROD_DB_USER in .env}
       KC_DB_PASSWORD: ${KEYCLOAK_PROD_DB_PASSWORD:?set KEYCLOAK_PROD_DB_PASSWORD in .env}
       # ── Hostname / proxy ──
@@ -124,10 +138,14 @@ services:
       # Defaults come from vite.config.ts; uncomment to override per deploy.
       # SHADCN_THEME_APP_NAME: Velobits
     depends_on:
+      # Only applies when the local-db profile is active; with the remote
+      # (Aiven) database there is no local dependency to wait for.
       keycloak-db:
         condition: service_healthy
+        required: false
     networks:
       - velobits-net
+      - velobits-proxy-net
     # KC 26 UBI-micro image has no curl; hit /health/ready on mgmt port 9000 via
     # bash /dev/tcp (same trick as the dev stack).
     healthcheck:
@@ -145,11 +163,14 @@ networks:
   velobits-net:
     name: velobits-net
     driver: bridge
-    attachable: true
+  velobits-proxy-net:
+    name: velobits-proxy-net
+    external: true
 
 # ── Volumes ───────────────────────────────────────────────────────────────────
 volumes:
-  # Identity database — the one stateful thing here; back it up.
+  # Identity database — only used with `--profile local-db`. With Aiven the
+  # data (and its automated backups) live on Aiven's side.
   keycloak-prod-pgdata:
   # Let's Encrypt account key + issued certs. Persist to avoid ACME rate limits.
   traefik-acme:

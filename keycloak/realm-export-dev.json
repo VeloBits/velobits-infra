@@ -42,12 +42,20 @@
       "standardFlowEnabled": true,
       "directAccessGrantsEnabled": true,
       "serviceAccountsEnabled": false,
-      "redirectUris": ["http://localhost:5173/*", "http://localhost:3200/*"],
-      "webOrigins": ["http://localhost:5173", "http://localhost:3200"],
+      "redirectUris": [
+        "http://localhost:5173/*",
+        "http://localhost:3200/*",
+        "https://toggleflow-dev.velobits.dev/*"
+      ],
+      "webOrigins": [
+        "http://localhost:5173",
+        "http://localhost:3200",
+        "https://toggleflow-dev.velobits.dev"
+      ],
       "attributes": {
         "pkce.code.challenge.method": "S256",
         "access.token.lifespan": "300",
-        "post.logout.redirect.uris": "http://localhost:5173/##http://localhost:5173/login##http://localhost:3200/##http://localhost:3200/login"
+        "post.logout.redirect.uris": "http://localhost:5173/##http://localhost:5173/login##http://localhost:3200/##http://localhost:3200/login##https://toggleflow-dev.velobits.dev/##https://toggleflow-dev.velobits.dev/login"
       },
       "protocolMappers": [
         {
@@ -102,7 +110,7 @@
         "pkce.code.challenge.method": "S256",
         "access.token.lifespan": "300",
         "post.logout.redirect.uris": "http://localhost:3100/##http://develop-fixmytext.velobits.dev/##http://localhost:3100/login##http://develop-fixmytext.velobits.dev/login",
-        "backchannel.logout.url": "http://account-svc:8000/api/v1/auth/backchannel-logout",
+        "backchannel.logout.url": "http://kong:8000/api/v1/auth/backchannel-logout",
         "backchannel.logout.session.required": "true",
         "backchannel.logout.revoke.offline.tokens": "false"
       },

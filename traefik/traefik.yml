@@ -1,8 +1,14 @@
-﻿# Traefik v3 static configuration â€” VeloBits platform edge proxy.
+﻿# Traefik v3 static configuration — VeloBits platform edge proxy.
+# Mounted into the container at /etc/traefik/traefik.yml (docker-compose.yml);
+# this file IS the running config — edit here, then `docker compose restart traefik`
+# (static config is not hot-reloaded, unlike the rules/ dynamic files).
 #
 # Responsibilities:
-#   1. Accept all *.velobits.dev traffic on :80 (TLS termination at production deploy).
-#   2. Route dev hostnames and paths via the file provider
+#   1. Terminate TLS for *.velobits.dev on :443
+#      (mkcert dev certificate, see traefik/rules/tls.yml).
+#   2. Redirect :80 → :443. The .dev TLD is HSTS-preloaded, so browsers
+#      force https:// for every *.velobits.dev URL — plain HTTP can never work.
+#   3. Route dev hostnames and paths via the file provider
 #      (rules in traefik/rules/).
 #
 # Providers:
@@ -10,11 +16,20 @@
 
 api:
   dashboard: true
-  insecure: true   # dev only: dashboard bound to 127.0.0.1:8090
+  # Dashboard is served via the router in rules/dashboard.yml
+  # (https://traefik.velobits.dev) — no insecure :8080 port.
 
 entryPoints:
   web:
     address: ":80"
+    http:
+      redirections:
+        entryPoint:
+          to: websecure
+          scheme: https
+
+  websecure:
+    address: ":443"
 
 providers:
   file:

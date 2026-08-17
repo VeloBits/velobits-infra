@@ -1,3 +1,8 @@
 # Shell scripts are bind-mounted into Linux containers (e.g. keycloak-bootstrap)
 # and must keep LF endings regardless of core.autocrlf on Windows checkouts.
 *.sh text eol=lf
+
+# Rendered into the runtime .env on the Linux VM by Octopus — a CRLF here
+# would put a trailing \r inside secret values.
+octopus/env.*.template text eol=lf
+octopus/docker-compose.deploy.yml text eol=lf
