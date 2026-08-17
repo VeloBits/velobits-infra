@@ -134,8 +134,8 @@ services:
       KC_DB_PASSWORD: ${KEYCLOAK_DEV_DB_PASSWORD:?set KEYCLOAK_DEV_DB_PASSWORD in .env}
       # KC_HOSTNAME deliberately unset: with KC_HOSTNAME_STRICT=false Keycloak
       # derives the hostname from each request (X-Forwarded-* via Traefik), so
-      # https://auth-dev.velobits.dev, https://auth-dev.saurabh-yadav.me AND
-      # direct http://localhost:8080 all get self-consistent URLs/issuers.
+      # https://auth-dev.velobits.dev AND direct http://localhost:8080 both
+      # get self-consistent URLs/issuers.
       # NOTE: the OIDC issuer therefore varies by host — point browser and
       # backend at the SAME base URL or token validation will fail on issuer.
       # Prod pins KC_HOSTNAME instead (docker-compose-prod.yml / octopus).

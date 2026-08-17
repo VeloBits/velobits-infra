@@ -2,8 +2,7 @@
 #
 # Generated with mkcert (locally-trusted, NOT for production):
 #   mkcert -cert-file traefik/certs/velobits-dev.crt -key-file traefik/certs/velobits-dev.key \
-#     "*.velobits.dev" velobits.dev "*.toggleflow.velobits.dev" \
-#     "*.saurabh-yadav.me" saurabh-yadav.me "*.toggleflow.saurabh-yadav.me" \
+#     "*.velobits.dev" velobits.dev "*.toggleflow.velobits.dev" "*.fixmytext.velobits.dev" \
 #     localhost 127.0.0.1
 #
 # traefik/certs/ is git-ignored — each dev machine generates its own cert

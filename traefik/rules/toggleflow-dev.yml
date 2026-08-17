@@ -15,7 +15,7 @@ http:
   routers:
     # Dashboard + same-origin /api + /edge, via ToggleFlow's nginx router.
     toggleflow-dev-app:
-      rule: "Host(`toggleflow-dev.velobits.dev`) || Host(`toggleflow-dev.saurabh-yadav.me`)"
+      rule: "Host(`toggleflow-dev.velobits.dev`)"
       service: toggleflow-dev-router-svc
       entryPoints:
         - websecure
@@ -23,7 +23,7 @@ http:
 
     # Direct control-plane API for SDKs / curl (bearer tokens, audience toggleflow-api).
     toggleflow-dev-api:
-      rule: "Host(`api-dev.toggleflow.velobits.dev`) || Host(`api-dev.toggleflow.saurabh-yadav.me`)"
+      rule: "Host(`api-dev.toggleflow.velobits.dev`)"
       service: toggleflow-dev-api-svc
       entryPoints:
         - websecure

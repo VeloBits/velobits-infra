@@ -9,9 +9,7 @@
 http:
   routers:
     keycloak:
-      # Temporary domain until velobits.dev DNS is live - drop the second
-      # clause at cutover (see docs/octopus-deployment.md).
-      rule: Host(`auth.velobits.dev`) || Host(`auth-dev.velobits.dev`) || Host(`auth-dev.saurabh-yadav.me`)
+      rule: Host(`auth.velobits.dev`) || Host(`auth-dev.velobits.dev`)
       service: keycloak
       entryPoints:
         - websecure

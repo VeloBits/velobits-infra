@@ -4,7 +4,7 @@
 # (static config is not hot-reloaded, unlike the rules/ dynamic files).
 #
 # Responsibilities:
-#   1. Terminate TLS for *.velobits.dev / *.saurabh-yadav.me on :443
+#   1. Terminate TLS for *.velobits.dev on :443
 #      (mkcert dev certificate, see traefik/rules/tls.yml).
 #   2. Redirect :80 → :443. The .dev TLD is HSTS-preloaded, so browsers
 #      force https:// for every *.velobits.dev URL — plain HTTP can never work.
@@ -17,7 +17,7 @@
 api:
   dashboard: true
   # Dashboard is served via the router in rules/dashboard.yml
-  # (https://traefik.saurabh-yadav.me) — no insecure :8080 port.
+  # (https://traefik.velobits.dev) — no insecure :8080 port.
 
 entryPoints:
   web:

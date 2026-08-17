@@ -10,7 +10,7 @@ http:
   routers:
     # API gateway: Kong routes /api/v1/* to backend services.
     fixmytext-dev-api:
-      rule: "Host(`api-dev.fixmytext.velobits.dev`) || Host(`api-dev.fixmytext.saurabh-yadav.me`)"
+      rule: "Host(`api-dev.fixmytext.velobits.dev`)"
       priority: 10
       service: fixmytext-dev-kong-svc
       entryPoints:
@@ -23,7 +23,7 @@ http:
     # Traefik v3 requires exactly one argument per PathPrefix matcher - the
     # v2 multi-arg form is rejected and silently disables the router.
     fixmytext-dev-router:
-      rule: "(Host(`fixmytext-dev.velobits.dev`) || Host(`fixmytext-dev.saurabh-yadav.me`)) && (Path(`/`) || PathPrefix(`/tools`) || PathPrefix(`/about`) || PathPrefix(`/pricing`) || PathPrefix(`/share`))"
+      rule: "Host(`fixmytext-dev.velobits.dev`) && (Path(`/`) || PathPrefix(`/tools`) || PathPrefix(`/about`) || PathPrefix(`/pricing`) || PathPrefix(`/share`))"
       priority: 20
       service: fixmytext-dev-router-svc
       entryPoints:
@@ -32,7 +32,7 @@ http:
 
     # Editor app: static pages, SEO tool pages, share pages, marketing root.
     fixmytext-dev-editor:
-      rule: "(Host(`fixmytext-dev-editor.velobits.dev`) || Host(`fixmytext-dev-editor.saurabh-yadav.me`)) && (Path(`/`) || PathPrefix(`/tools`) || PathPrefix(`/about`) || PathPrefix(`/pricing`) || PathPrefix(`/share`))"
+      rule: "Host(`fixmytext-dev-editor.velobits.dev`) && (Path(`/`) || PathPrefix(`/tools`) || PathPrefix(`/about`) || PathPrefix(`/pricing`) || PathPrefix(`/share`))"
       priority: 20
       service: fixmytext-editor-dev-svc
       entryPoints:
@@ -41,7 +41,7 @@ http:
 
     # Analytics app: static pages, SEO tool pages, share pages, marketing root.
     fixmytext-dev-analytics:
-      rule: "(Host(`fixmytext-dev-analytics.velobits.dev`) || Host(`fixmytext-dev-analytics.saurabh-yadav.me`)) && (Path(`/`) || PathPrefix(`/tools`) || PathPrefix(`/about`) || PathPrefix(`/pricing`) || PathPrefix(`/share`))"
+      rule: "Host(`fixmytext-dev-analytics.velobits.dev`) && (Path(`/`) || PathPrefix(`/tools`) || PathPrefix(`/about`) || PathPrefix(`/pricing`) || PathPrefix(`/share`))"
       priority: 20
       service: fixmytext-analytics-dev-svc
       entryPoints:
@@ -50,7 +50,7 @@ http:
 
     # Content app: static pages, SEO tool pages, share pages, marketing root.
     fixmytext-dev-content:
-      rule: "(Host(`fixmytext-dev-content.velobits.dev`) || Host(`fixmytext-dev-content.saurabh-yadav.me`)) && (Path(`/`) || PathPrefix(`/tools`) || PathPrefix(`/about`) || PathPrefix(`/pricing`) || PathPrefix(`/share`))"
+      rule: "Host(`fixmytext-dev-content.velobits.dev`) && (Path(`/`) || PathPrefix(`/tools`) || PathPrefix(`/about`) || PathPrefix(`/pricing`) || PathPrefix(`/share`))"
       priority: 20
       service: fixmytext-dev-content-svc
       entryPoints:
@@ -59,7 +59,7 @@ http:
 
     # Shell app: static pages, SEO tool pages, share pages, marketing root.
     fixmytext-dev-shell:
-      rule: "(Host(`fixmytext-dev-shell.velobits.dev`) || Host(`fixmytext-dev-shell.saurabh-yadav.me`)) && (Path(`/`) || PathPrefix(`/tools`) || PathPrefix(`/about`) || PathPrefix(`/pricing`) || PathPrefix(`/share`))"
+      rule: "Host(`fixmytext-dev-shell.velobits.dev`) && (Path(`/`) || PathPrefix(`/tools`) || PathPrefix(`/about`) || PathPrefix(`/pricing`) || PathPrefix(`/share`))"
       priority: 20
       service: fixmytext-shell-dev-svc
       entryPoints:

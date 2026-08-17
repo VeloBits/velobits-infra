@@ -10,7 +10,7 @@ http:
   routers:
     # Website + same-origin /, via Velobits-Website's own server.
     velobits-website-dev-app:
-      rule: "Host(`velobits.dev`) || Host(`velobits.saurabh-yadav.me`)"
+      rule: "Host(`velobits.dev`)"
       service: velobits-website-dev-svc
       entryPoints:
         - websecure
