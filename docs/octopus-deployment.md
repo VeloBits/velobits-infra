@@ -245,6 +245,38 @@ also create it up front:
 sudo docker network create velobits-proxy-net
 ```
 
+**Origin TLS certificate (Cloudflare)** — public hostnames are proxied through
+Cloudflare (orange cloud), which terminates browser TLS at the edge and then
+makes its own TLS connection to this host. The dev stack's mkcert certs are
+git-ignored and never shipped, so without a real cert here Cloudflare fails
+with **error 525**. Fix, once:
+
+1. Cloudflare dashboard → SSL/TLS → **Origin Server** → Create Certificate →
+   hostnames `velobits.dev, *.velobits.dev` (add `*.fixmytext.velobits.dev`
+   if that API will be proxied), validity 15 years.
+2. Save both PEM blocks on the VM — the filenames match what
+   `traefik/rules/tls.yml` expects:
+
+   ```bash
+   sudo mkdir -p /opt/velobits/certs
+   sudo nano /opt/velobits/certs/velobits-dev.crt   # paste the certificate
+   sudo nano /opt/velobits/certs/velobits-dev.key   # paste the private key
+   sudo chmod 600 /opt/velobits/certs/velobits-dev.key
+   ```
+
+   The directory sits OUTSIDE the purged install dir, so it survives deploys;
+   [octopus/docker-compose.deploy.yml](../octopus/docker-compose.deploy.yml)
+   mounts it over the mkcert path.
+3. Cloudflare → SSL/TLS → Overview → set mode **Full (strict)** — Origin CA
+   certs pass strict validation, and anything weaker lets an attacker on the
+   VM's network impersonate the origin.
+
+Caveat: Cloudflare's free *edge* certificate covers only `velobits.dev` and
+first-level `*.velobits.dev`. A proxied second-level name like
+`api.fixmytext.velobits.dev` gets edge TLS errors without Advanced Certificate
+Manager — set that DNS record to **DNS only** (grey cloud) or move the API to
+a first-level name if that matters.
+
 **2. Install the Tentacle** (Ubuntu/Debian,
 [official docs](https://octopus.com/docs/infrastructure/deployment-targets/tentacle/linux)):
 

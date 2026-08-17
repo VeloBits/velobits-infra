@@ -16,6 +16,17 @@
 #    data lives on Aiven.
 
 services:
+  # VM TLS: Cloudflare fronts all public hostnames (orange-cloud proxy) and
+  # validates the origin with a Cloudflare Origin CA certificate that lives
+  # OUTSIDE the purged package directory: /opt/velobits/certs/velobits-dev.crt
+  # + .key (created once — see docs/octopus-deployment.md Part 6). This mount
+  # replaces the base file's git-ignored mkcert dir (same container path, so
+  # compose merge swaps the source); traefik/rules/tls.yml already points at
+  # these filenames. Local dev machines keep using mkcert, unaffected.
+  traefik:
+    volumes:
+      - /opt/velobits/certs:/etc/traefik/certs:ro
+
   keycloak-theme-builder:
     build: !reset null
     image: alpine:3
