@@ -19,8 +19,8 @@ Traefik routes by **Host header**:
 | `auth-dev.velobits.dev` | `keycloak-dev` | dev |
 | `api-dev.velobits.dev` | `kong` | dev |
 | `develop-fixmytext.velobits.dev` | frontend dev container | dev |
-| `auth.velobits.dev` | `keycloak-prod` | prod |
-| `api.velobits.dev` | `kong-prod` | prod |
+| `auth.velobits.dev` | `velobits-auth` | prod |
+| `api.fixmytext.velobits.dev` | `kong-prod` | prod |
 | `fixmytext.velobits.dev` | `frontend-prod` | prod |
 | `chat.velobits.dev`, `notes.velobits.dev` | future products | prod |
 

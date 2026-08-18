@@ -65,6 +65,14 @@ umask 077
 cp "$TEMPLATE" .env
 echo "[deploy] .env rendered ($(grep -c '=' .env) entries, mode 600)"
 
+# Both stacks declare velobits-proxy-net as `external: true` (product stacks
+# join it too), so nothing in this package creates it — `up` fails on a fresh
+# host without this guard.
+docker network inspect velobits-proxy-net >/dev/null 2>&1 || {
+  echo "[deploy] creating shared external network velobits-proxy-net"
+  docker network create velobits-proxy-net
+}
+
 # `config -q` validates the merged file — and, for the dev stack, catches
 # docker compose < 2.24, which can't parse the !reset tag in the override.
 echo "[deploy] $(docker compose version)"

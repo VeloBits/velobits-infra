@@ -14,7 +14,8 @@
 #   vars.OCTOPUS_URL                  e.g. https://velobits.octopus.app
 #   vars.OCTOPUS_SERVICE_ACCOUNT_ID   ID of the shared service account
 #                                     github-actions-velobits-oidc (this repo's
-#                                     OIDC identity: repo:VeloBits/velobits-infra:ref:*)
+#                                     OIDC identity, incl. immutable GitHub IDs:
+#                                     repo:VeloBits@146367091/velobits-infra@1308719371:ref:*)
 #   vars.OCTOPUS_SPACE                space name (defaults to "Default")
 # Full setup runbook: docs/octopus-deployment.md
 name: Deploy via Octopus
