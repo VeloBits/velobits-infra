@@ -75,6 +75,14 @@ done
 echo "[bootstrap] Keycloak is ready"
 
 # ── 2. Acquire admin token ───────────────────────────────────────────────────
+# Primary: master-realm admin password grant — required on FIRST boot (empty
+# DB), where Keycloak just created the admin from this same env, and used for
+# realm creation (a master-level operation).
+# Fallback: account-svc client credentials in $KEYCLOAK_REALM. The service
+# account's secret is set from Octopus env on every run (see section below)
+# and it holds the realm-management roles this script needs, so deploys keep
+# working even when the human admin password drifts (console resets, KC 26
+# temporary-admin replacement). Exit 3 only when BOTH paths fail.
 ADMIN_TOKEN=$(curl -fsS -X POST \
   -H "Content-Type: application/x-www-form-urlencoded" \
   -d "grant_type=password" \
@@ -82,11 +90,26 @@ ADMIN_TOKEN=$(curl -fsS -X POST \
   --data-urlencode "username=$KEYCLOAK_ADMIN" \
   --data-urlencode "password=$KEYCLOAK_ADMIN_PASSWORD" \
   "$KEYCLOAK_URL/realms/master/protocol/openid-connect/token" \
-  | python3 -c "import json,sys; print(json.load(sys.stdin)['access_token'])" 2>/dev/null) || {
-  echo "[bootstrap] FATAL: admin token request failed" >&2
+  | python3 -c "import json,sys; print(json.load(sys.stdin)['access_token'])" 2>/dev/null) || true
+AUTH_MODE=admin
+if [ -z "$ADMIN_TOKEN" ] && [ -n "${KEYCLOAK_SERVICE_ACCOUNT_SECRET:-}" ]; then
+  echo "[bootstrap] admin password grant failed - falling back to service-account client credentials"
+  AUTH_MODE=sa
+  ADMIN_TOKEN=$(curl -fsS -X POST \
+    -H "Content-Type: application/x-www-form-urlencoded" \
+    -d "grant_type=client_credentials" \
+    --data-urlencode "client_id=${KEYCLOAK_SERVICE_ACCOUNT_ID:-account-svc}" \
+    --data-urlencode "client_secret=$KEYCLOAK_SERVICE_ACCOUNT_SECRET" \
+    "$KEYCLOAK_URL/realms/$KEYCLOAK_REALM/protocol/openid-connect/token" \
+    | python3 -c "import json,sys; print(json.load(sys.stdin)['access_token'])" 2>/dev/null) || true
+fi
+if [ -z "$ADMIN_TOKEN" ]; then
+  echo "[bootstrap] FATAL: admin token request failed (admin grant and service-account fallback)" >&2
+  echo "[bootstrap] fix: reset the 'admin' password in the master realm to the Octopus value," >&2
+  echo "[bootstrap]      or verify KEYCLOAK_SERVICE_ACCOUNT_ID/SECRET match the live client." >&2
   exit 3
-}
-echo "[bootstrap] admin token acquired"
+fi
+echo "[bootstrap] admin token acquired (mode: $AUTH_MODE)"
 
 # ── 3. Check whether realm already exists ────────────────────────────────────
 REALM_STATUS=$(curl -fsS -o /dev/null -w "%{http_code}" \
@@ -292,19 +315,23 @@ import json, os; print(json.dumps({'secret': os.environ['KEYCLOAK_SERVICE_ACCOUN
       | python3 -c "import json,sys; c=json.load(sys.stdin); print(c[0]['id'] if c else '')" 2>/dev/null || true)
 
     if [ -n "$SA_USER_ID" ] && [ -n "$REALM_MGMT_UUID" ]; then
-      # Fetch manage-users and view-users roles from realm-management.
-      MANAGE_USERS_ROLE=$(curl -s \
-        -H "Authorization: Bearer $ADMIN_TOKEN" \
-        "$KEYCLOAK_URL/admin/realms/$KEYCLOAK_REALM/clients/$REALM_MGMT_UUID/roles/manage-users")
-      VIEW_USERS_ROLE=$(curl -s \
-        -H "Authorization: Bearer $ADMIN_TOKEN" \
-        "$KEYCLOAK_URL/admin/realms/$KEYCLOAK_REALM/clients/$REALM_MGMT_UUID/roles/view-users")
+      # Grant the realm-management roles account-svc needs: user management
+      # (its own job) plus everything this script does, so it can serve as the
+      # bootstrap auth fallback when the master admin password drifts.
+      SA_ROLE_LIST=""
+      for SA_ROLE_NAME in manage-users view-users manage-clients view-clients \
+                          manage-realm view-realm manage-identity-providers; do
+        SA_ROLE_JSON=$(curl -s \
+          -H "Authorization: Bearer $ADMIN_TOKEN" \
+          "$KEYCLOAK_URL/admin/realms/$KEYCLOAK_REALM/clients/$REALM_MGMT_UUID/roles/$SA_ROLE_NAME")
+        SA_ROLE_LIST="${SA_ROLE_LIST:+$SA_ROLE_LIST,}$SA_ROLE_JSON"
+      done
 
-      # Assign both roles to the service account user.
+      # Assign the roles to the service account user (idempotent).
       ROLE_ASSIGN_CODE=$(curl -sS -o /dev/null -w "%{http_code}" -X POST \
         -H "Authorization: Bearer $ADMIN_TOKEN" \
         -H "Content-Type: application/json" \
-        -d "[$MANAGE_USERS_ROLE,$VIEW_USERS_ROLE]" \
+        -d "[$SA_ROLE_LIST]" \
         "$KEYCLOAK_URL/admin/realms/$KEYCLOAK_REALM/users/$SA_USER_ID/role-mappings/clients/$REALM_MGMT_UUID")
       echo "[bootstrap] realm-management roles assigned (HTTP $ROLE_ASSIGN_CODE)"
     else
