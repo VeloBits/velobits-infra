@@ -15,8 +15,14 @@
 # `start-dev`; here the image is an immutable artifact you build once, push to a
 # registry, and deploy anywhere.
 #
+# Public hostnames this stack fronts (traefik/rules-prod/):
+#   auth.velobits.dev            identity (this repo)
+#   api.fixmytext.velobits.dev   FixMyText API -> kong-prod:8000 (product stack)
+#
 # Prereqs on the host:
 #   - DNS: auth.velobits.dev -> this host's public IP (needed for ACME HTTP-01).
+#     Each product API name needs its own record too — a `*.velobits.dev`
+#     wildcard does NOT cover second-level names like api.fixmytext.velobits.dev.
 #   - Ports 80 and 443 reachable from the internet.
 #   - A reachable Postgres (Aiven: use the service URI host/port, sslmode=require).
 #   - .env populated (see .env.example — the "PRODUCTION" section).
@@ -156,16 +162,18 @@ services:
       start_period: 60s
 
 
-# ── Shared network ────────────────────────────────────────────────────────────
-# Same fixed, attachable name as dev so product PROD stacks can join it with
-# `external: true`. This stack owns and creates it on the prod host.
+# ── Shared networks ───────────────────────────────────────────────────────────
+# Same fixed names as dev so product PROD stacks can join velobits-proxy-net
+# with `external: true`. THIS STACK CREATES BOTH on the prod host — declaring
+# velobits-proxy-net external here too would leave nobody creating it and fail
+# the first deploy on a fresh host.
 networks:
   velobits-net:
     name: velobits-net
     driver: bridge
   velobits-proxy-net:
     name: velobits-proxy-net
-    external: true
+    driver: bridge
 
 # ── Volumes ───────────────────────────────────────────────────────────────────
 volumes:

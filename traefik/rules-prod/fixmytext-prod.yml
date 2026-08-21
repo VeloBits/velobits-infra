@@ -11,6 +11,14 @@
 # loads, and issuance fails (then retries with backoff) while DNS points
 # elsewhere. Note this is a second-level subdomain: a `*.velobits.dev` record
 # does NOT cover it; it needs its own A record (or `*.fixmytext.velobits.dev`).
+#
+# Cloudflare: set this record to DNS only (grey cloud). Cloudflare's free
+# Universal SSL edge certificate covers velobits.dev and *.velobits.dev but NOT
+# second-level names like api.fixmytext.velobits.dev, so proxying it (orange
+# cloud) serves a mismatched edge cert. Grey cloud puts Let's Encrypt (the `le`
+# resolver below) directly in front of the browser, which is correct here — the
+# API takes no cookies from the marketing domain and needs no WAF/CDN in front.
+# Proxying it anyway requires Advanced Certificate Manager (paid).
 
 http:
   routers:

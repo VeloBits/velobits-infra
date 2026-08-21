@@ -237,9 +237,10 @@ curl -fsSL https://get.docker.com | sudo sh
 docker compose version   # want >= 2.24
 ```
 
-Both stacks declare the shared `velobits-proxy-net` network as `external`
-(product stacks join it too). `deploy.sh` creates it if missing, but you can
-also create it up front:
+Both stacks in THIS repo create the shared `velobits-proxy-net` network
+themselves (product stacks join it as `external`). `deploy.sh` still creates it
+when missing, so a product stack deployed before this one on a fresh host
+cannot fail on it, and you can also create it up front:
 
 ```bash
 sudo docker network create velobits-proxy-net
@@ -252,8 +253,9 @@ git-ignored and never shipped, so without a real cert here Cloudflare fails
 with **error 525**. Fix, once:
 
 1. Cloudflare dashboard → SSL/TLS → **Origin Server** → Create Certificate →
-   hostnames `velobits.dev, *.velobits.dev` (add `*.fixmytext.velobits.dev`
-   if that API will be proxied), validity 15 years.
+   hostnames `velobits.dev, *.velobits.dev, *.fixmytext.velobits.dev`
+   (one `*.<app>.velobits.dev` entry per product API — see the hostname
+   convention in [traefik/README.md](../traefik/README.md)), validity 15 years.
 2. Save both PEM blocks on the VM — the filenames match what
    `traefik/rules/tls.yml` expects:
 
@@ -271,11 +273,15 @@ with **error 525**. Fix, once:
    certs pass strict validation, and anything weaker lets an attacker on the
    VM's network impersonate the origin.
 
-Caveat: Cloudflare's free *edge* certificate covers only `velobits.dev` and
-first-level `*.velobits.dev`. A proxied second-level name like
-`api.fixmytext.velobits.dev` gets edge TLS errors without Advanced Certificate
-Manager — set that DNS record to **DNS only** (grey cloud) or move the API to
-a first-level name if that matters.
+**Product API names must be DNS only (grey cloud).** Cloudflare's free *edge*
+certificate covers `velobits.dev` and first-level `*.velobits.dev` only, so a
+**proxied** second-level name like `api.fixmytext.velobits.dev` serves a
+mismatched edge certificate. Set those records to **DNS only**; Traefik's Let's
+Encrypt certificate then faces the browser directly, which is what
+`traefik/rules-prod/fixmytext-prod.yml` expects. Proxying them anyway requires
+Advanced Certificate Manager (paid). This applies only to the API names — the
+identity host `auth.velobits.dev` is first-level and stays proxied, so it keeps
+using the Origin CA cert above.
 
 **2. Install the Tentacle** (Ubuntu/Debian,
 [official docs](https://octopus.com/docs/infrastructure/deployment-targets/tentacle/linux)):
@@ -313,8 +319,11 @@ Verify: Octopus → Infrastructure → Deployment targets → `oracle-vm-1` show
 **4. Oracle network for the app itself** (not for deploys): allow ingress TCP
 80 **and** 443 in the VCN security list / NSG — production terminates TLS on
 443 and Let's Encrypt's HTTP-01 challenge needs 80. For Production, DNS for
-`auth.velobits.dev` must point at this host's public IP *before* the first
-deploy, or ACME issuance fails. Docker publishes ports via its own iptables
+**every** hostname in `traefik/rules-prod/` must point at this host's public IP
+*before* the first deploy, or ACME issuance fails and backs off:
+`auth.velobits.dev` (proxied) and each product API name such as
+`api.fixmytext.velobits.dev` (DNS only — see above). A `*.velobits.dev` record
+does not cover the second-level API names; each needs its own record. Docker publishes ports via its own iptables
 chains, so the Ubuntu host firewall usually needs no extra rules — if a port
 is still unreachable after opening the NSG, check `/etc/iptables/rules.v4`
 (Oracle images ship a restrictive default).

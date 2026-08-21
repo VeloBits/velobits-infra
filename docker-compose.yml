@@ -4,19 +4,26 @@
 #   traefik        edge reverse proxy for all *.velobits.dev subdomains (:80)
 #   keycloak-dev   identity provider (Velobits realm) + its own Postgres
 #
-# This stack creates the shared `velobits-net` Docker network. Product stacks
-# (e.g. fixmytext-backend) join it as an external network, so:
-#   - Traefik reaches Kong at http://kong:8000 (alias published by the app stack)
-#   - App services reach Keycloak at http://keycloak-dev:8080
+# This stack OWNS AND CREATES both shared Docker networks:
+#   velobits-net        internal — Traefik <-> Keycloak <-> Keycloak's database
+#   velobits-proxy-net  shared with product stacks, which join it as external:
+#     - Traefik reaches Kong at http://kong:8000 (dev) / http://kong-prod:8000
+#       (prod) — the product stack publishes those names on this network
+#     - App services reach Keycloak at http://keycloak-dev:8080
 #
 # Start THIS stack first, then the product stack:
-#   docker compose up -d          # here
+#   docker compose up -d          # here (creates velobits-proxy-net)
 #   docker compose --profile dev up --build   # in fixmytext-backend
+#
+# Public hostname convention (see traefik/README.md — one source of truth):
+#   auth.velobits.dev / auth-dev.velobits.dev            identity (this repo)
+#   api.<app>.velobits.dev / api-dev.<app>.velobits.dev  product APIs
+#   <app>.velobits.dev / <app>-dev.velobits.dev          product frontends
 #
 # Optional /etc/hosts entries for subdomain routing via Traefik (see README):
 #   127.0.0.1 auth-dev.velobits.dev
-#   127.0.0.1 api-dev.velobits.dev
-#   127.0.0.1 develop-fixmytext.velobits.dev
+#   127.0.0.1 api-dev.fixmytext.velobits.dev
+#   127.0.0.1 fixmytext-dev.velobits.dev
 
 services:
 
@@ -236,16 +243,21 @@ services:
       - velobits-proxy-net
 
 
-# ── Shared network ────────────────────────────────────────────────────────────
-# Fixed name (not project-prefixed) + attachable so product stacks can join it
-# with `external: true`. This stack owns and creates the network.
+# ── Shared networks ───────────────────────────────────────────────────────────
+# Fixed names (not project-prefixed) so product stacks can join velobits-proxy-net
+# with `external: true`. THIS STACK CREATES BOTH — neither is declared external
+# here, otherwise `docker compose up` fails on a fresh host with
+# "network velobits-proxy-net declared as external, but could not be found"
+# (product stacks are the ones that join, so external belongs on their side).
+#   velobits-net        this stack's private segment (Keycloak + its database)
+#   velobits-proxy-net  the cross-stack seam: Traefik <-> product gateways
 networks:
   velobits-net:
     name: velobits-net
     driver: bridge
   velobits-proxy-net:
     name: velobits-proxy-net
-    external: true
+    driver: bridge
 
 # ── Volumes ───────────────────────────────────────────────────────────────────
 volumes:

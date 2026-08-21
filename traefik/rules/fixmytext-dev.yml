@@ -1,10 +1,19 @@
 # Dev Traefik routes for local VeloBits/FixMyText services.
 #
+# Hostname convention (traefik/README.md is the source of truth):
+#   API       api-dev.fixmytext.velobits.dev   -> Kong  (prod: api.fixmytext...)
+#   Frontends fixmytext-dev[-<app>].velobits.dev
+# The API name is deliberately a SECOND-level subdomain (api-dev.<app>.velobits.dev)
+# so every product gets its own API namespace instead of competing for a single
+# api-dev.velobits.dev. Cost of that choice: a `*.velobits.dev` wildcard does not
+# cover it — the mkcert dev cert lists *.fixmytext.velobits.dev explicitly
+# (traefik/rules/tls.yml) and prod needs a per-name DNS record.
+#
 # Frontend Docker compose publishes the nginx router on host port 3100.
 # Backend services live on the same Docker network as Traefik.
 #
 # Higher priority wins when both routers could match.
-# Prod equivalents (fixmytext.velobits.dev) are added at production deploy.
+# Prod equivalents live in traefik/rules-prod/fixmytext-prod.yml.
 
 http:
   routers:
